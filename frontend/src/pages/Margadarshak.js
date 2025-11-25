@@ -14,6 +14,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const Margadarshak = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("form");
   const [formData, setFormData] = useState({
     marks_10th: "",
@@ -28,6 +29,7 @@ const Margadarshak = () => {
   const [recommendations, setRecommendations] = useState(null);
   const [roadmap, setRoadmap] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
   
   // Chat state
   const [chatMessages, setChatMessages] = useState([]);
