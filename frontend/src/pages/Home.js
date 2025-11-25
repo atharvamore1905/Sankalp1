@@ -1,8 +1,10 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Brain, Target, BarChart3, Users } from "lucide-react";
+import { BookOpen, Brain, Target, BarChart3, Users, TrendingUp, Lock } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 const Home = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const modules = [
     {
@@ -11,23 +13,8 @@ const Home = () => {
       description: "Discover colleges, skills, jobs, certifications, and salary trends. Search, filter, and explore your future.",
       icon: BookOpen,
       color: "#667eea",
-      path: "/jigyasa"
-    },
-    {
-      name: "MARGADARSHAK",
-      title: "AI Career Path Generator",
-      description: "Get personalized career recommendations and 3-level roadmaps based on your academic profile and goals.",
-      icon: Brain,
-      color: "#764ba2",
-      path: "/margadarshak"
-    },
-    {
-      name: "SAMARTHYA",
-      title: "Skills-to-Jobs Mapping",
-      description: "Match your skills with job opportunities. Identify skill gaps and get recommendations on what to learn next.",
-      icon: Target,
-      color: "#f093fb",
-      path: "/samarthya"
+      path: "/jigyasa",
+      public: true
     },
     {
       name: "DRISHTIKON",
@@ -35,17 +22,54 @@ const Home = () => {
       description: "View trending domains, salary insights, demand analysis, and emerging tech with interactive charts.",
       icon: BarChart3,
       color: "#4facfe",
-      path: "/drishtikon"
+      path: "/drishtikon",
+      public: true
+    },
+    {
+      name: "MARGADARSHAK",
+      title: "AI Career Path Generator",
+      description: "Get personalized career recommendations and 3-level roadmaps based on your academic profile and goals.",
+      icon: Brain,
+      color: "#764ba2",
+      path: "/margadarshak",
+      public: false
+    },
+    {
+      name: "SAMARTHYA",
+      title: "Skills-to-Jobs Mapping",
+      description: "Match your skills with job opportunities. Identify skill gaps and get recommendations on what to learn next.",
+      icon: Target,
+      color: "#f093fb",
+      path: "/samarthya",
+      public: false
+    },
+    {
+      name: "UNNATI",
+      title: "Progress Tracker",
+      description: "Track your roadmap progress, course completion, skills, projects, and achieve your custom goals with visual insights.",
+      icon: TrendingUp,
+      color: "#43e97b",
+      path: "/unnati",
+      public: false
     },
     {
       name: "SAHYOG",
       title: "Community Support",
       description: "Connect with peers, ask questions, share resources, and request mentorship in our supportive community.",
       icon: Users,
-      color: "#43e97b",
-      path: "/sahyog"
+      color: "#00f2fe",
+      path: "/sahyog",
+      public: false
     }
   ];
+
+  const handleModuleClick = (module) => {
+    if (!module.public && !user) {
+      navigate('/signin');
+    } else {
+      navigate(module.path);
+    }
+  };
 
   return (
     <div className="home-page" data-testid="home-page">
