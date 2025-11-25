@@ -100,14 +100,21 @@ const Home = () => {
           <div className="modules-grid">
             {modules.map((module, index) => {
               const Icon = module.icon;
+              const isLocked = !module.public && !user;
               return (
                 <div 
                   key={index} 
-                  className="module-card" 
-                  onClick={() => navigate(module.path)}
+                  className={`module-card ${isLocked ? 'locked' : ''}`}
+                  onClick={() => handleModuleClick(module)}
                   data-testid={`module-card-${module.name.toLowerCase()}`}
                   style={{ borderTop: `4px solid ${module.color}` }}
                 >
+                  {isLocked && (
+                    <div className="lock-badge" data-testid={`lock-badge-${module.name.toLowerCase()}`}>
+                      <Lock size={16} />
+                      <span>Sign in required</span>
+                    </div>
+                  )}
                   <div className="module-icon" style={{ color: module.color }}>
                     <Icon size={48} />
                   </div>
@@ -119,7 +126,7 @@ const Home = () => {
                     style={{ background: module.color }}
                     data-testid={`explore-btn-${module.name.toLowerCase()}`}
                   >
-                    Explore
+                    {isLocked ? 'Sign In to Access' : 'Explore'}
                   </button>
                 </div>
               );
