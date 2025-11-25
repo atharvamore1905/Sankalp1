@@ -129,8 +129,21 @@ const Navbar = () => {
           width: auto;
         }
 
-        .logo-text {
-          font-family: 'Spectral', serif;
+        .nav-auth {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .user-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .signup-btn {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
         }
 
         .nav-menu {
