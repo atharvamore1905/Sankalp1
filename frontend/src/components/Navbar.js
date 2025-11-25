@@ -35,7 +35,6 @@ const Navbar = () => {
       <div className="navbar-container">
         <Link to="/" className="navbar-logo" data-testid="navbar-logo">
           <img src="/logo.png" alt="Sankalp Logo" className="logo-img" />
-          <span className="logo-text">Sankalp</span>
         </Link>
 
         <div className={`nav-menu ${isOpen ? 'active' : ''}`}>
@@ -50,6 +49,46 @@ const Navbar = () => {
               {link.name}
             </Link>
           ))}
+        </div>
+
+        <div className="nav-auth">
+          {user ? (
+            <>
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/dashboard')}
+                data-testid="btn-dashboard"
+                className="user-btn"
+              >
+                <User size={18} />
+                <span>{user.name}</span>
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={handleLogout}
+                data-testid="btn-logout"
+              >
+                <LogOut size={18} />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/signin')}
+                data-testid="btn-signin-nav"
+              >
+                Sign In
+              </Button>
+              <Button 
+                onClick={() => navigate('/signup')}
+                data-testid="btn-signup-nav"
+                className="signup-btn"
+              >
+                Sign Up
+              </Button>
+            </>
+          )}
         </div>
 
         <div className="nav-toggle" onClick={() => setIsOpen(!isOpen)} data-testid="nav-toggle">
