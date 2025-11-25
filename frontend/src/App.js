@@ -35,9 +35,10 @@ const ProtectedRoute = ({ children }) => {
 
 function AppRoutes() {
   return (
-    <>
+    <div className="app-wrapper">
       <Navbar />
-      <Routes>
+      <main className="main-content">
+        <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/jigyasa" element={<Jigyasa />} />
         <Route path="/jigyasa/college/:id" element={<CollegeDetail />} />
