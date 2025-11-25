@@ -465,7 +465,7 @@ const Home = () => {
         }
 
         .section-title {
-          font-size: 2.5rem;
+          font-size: clamp(1.75rem, 4vw, 2.5rem);
           text-align: center;
           margin-bottom: 0.5rem;
           color: #1a1a2e;
@@ -473,14 +473,17 @@ const Home = () => {
 
         .section-subtitle {
           text-align: center;
-          font-size: 1.125rem;
+          font-size: clamp(1rem, 2vw, 1.125rem);
           color: #6b7280;
           margin-bottom: 3rem;
+          max-width: 600px;
+          margin-left: auto;
+          margin-right: auto;
         }
 
         .modules-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
           gap: 2rem;
           margin-top: 3rem;
         }
