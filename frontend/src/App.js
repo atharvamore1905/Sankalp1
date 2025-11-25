@@ -90,7 +90,9 @@ function AppRoutes() {
           } 
         />
       </Routes>
-    </>
+      </main>
+      <Footer />
+    </div>
   );
 }
 
