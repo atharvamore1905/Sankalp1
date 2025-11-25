@@ -220,6 +220,15 @@ h1, h2, h3 {
   to { transform: rotate(360deg); }
 }
 
+.loading-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: #667eea;
+}
+
 .roadmap-timeline {
   position: relative;
   padding-left: 3rem;
