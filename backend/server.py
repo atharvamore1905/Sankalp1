@@ -38,7 +38,59 @@ with open(ROOT_DIR / 'data_skills.json', 'r') as f:
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
+
+# JWT settings
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(authorization: Optional[str] = Cookie(None, alias="sankalp_token")):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(authorization, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return user_id
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
 # Models
+# Auth Models
+class SignupRequest(BaseModel):
+    name: str
+    email: EmailStr
+    phone_no: str
+    password: str
+    confirm_password: str
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class User(BaseModel):
+    id: str
+    name: str
+    email: str
+    phone_no: str
+    created_at: datetime
 class UserProfile(BaseModel):
     user_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
