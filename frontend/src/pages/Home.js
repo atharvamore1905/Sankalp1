@@ -551,19 +551,49 @@ const Home = () => {
         }
 
         @media (max-width: 768px) {
-          .hero-title {
-            font-size: 2.5rem;
+          .hero-logo {
+            width: 80px;
+            height: 80px;
           }
 
-          .hero-subtitle {
-            font-size: 1.25rem;
+          .hero-buttons {
+            flex-direction: column;
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
           }
 
-          .section-title {
-            font-size: 2rem;
+          .hero-buttons button {
+            width: 100%;
+          }
+
+          .features-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .mv-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .highlights-grid {
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
           }
 
           .modules-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .mv-card {
+            padding: 2rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .feature-card, .mv-card {
+            padding: 1.5rem;
+          }
+
+          .highlights-grid {
             grid-template-columns: 1fr;
           }
         }
