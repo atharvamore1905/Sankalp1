@@ -158,6 +158,300 @@ class MentorRequest(BaseModel):
     message: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+# ============= AUTHENTICATION ENDPOINTS =============
+@api_router.post("/auth/signup")
+async def signup(signup_data: SignupRequest, response: Response):
+    # Validation
+    if signup_data.password != signup_data.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+    
+    if len(signup_data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    
+    if not signup_data.phone_no.isdigit():
+        raise HTTPException(status_code=400, detail="Phone number must be numeric")
+    
+    # Check if user exists
+    existing_user = await db.users.find_one({"email": signup_data.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create user
+    user_id = str(uuid.uuid4())
+    hashed_password = get_password_hash(signup_data.password)
+    
+    user_doc = {
+        "id": user_id,
+        "name": signup_data.name,
+        "email": signup_data.email,
+        "phone_no": signup_data.phone_no,
+        "password_hash": hashed_password,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.insert_one(user_doc)
+    
+    # Create JWT token
+    access_token = create_access_token(data={"sub": user_id, "email": signup_data.email})
+    
+    # Set cookie
+    response.set_cookie(
+        key="sankalp_token",
+        value=access_token,
+        httponly=True,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        samesite="lax"
+    )
+    
+    return {
+        "message": "User created successfully",
+        "user": {
+            "id": user_id,
+            "name": signup_data.name,
+            "email": signup_data.email
+        }
+    }
+
+@api_router.post("/auth/login")
+async def login(login_data: LoginRequest, response: Response):
+    # Find user
+    user = await db.users.find_one({"email": login_data.email})
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    # Verify password
+    if not verify_password(login_data.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    # Create JWT token
+    access_token = create_access_token(data={"sub": user["id"], "email": user["email"]})
+    
+    # Set cookie
+    response.set_cookie(
+        key="sankalp_token",
+        value=access_token,
+        httponly=True,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        samesite="lax"
+    )
+    
+    return {
+        "message": "Login successful",
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"]
+        }
+    }
+
+@api_router.get("/auth/me")
+async def get_me(user_id: str = Depends(get_current_user)):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"user": user}
+
+@api_router.post("/auth/logout")
+async def logout(response: Response):
+    response.delete_cookie(key="sankalp_token")
+    return {"message": "Logged out successfully"}
+
+# ============= UNNATI - PROGRESS TRACKER =============
+@api_router.get("/unnati/{user_id}")
+async def get_progress(user_id: str, current_user: str = Depends(get_current_user)):
+    if user_id != current_user:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    items = await db.progress_items.find({"user_id": user_id}, {"_id": 0}).to_list(1000)
+    
+    # Calculate stats
+    total_items = len(items)
+    completed = len([i for i in items if i['status'] == 'completed'])
+    in_progress = len([i for i in items if i['status'] == 'in_progress'])
+    not_started = len([i for i in items if i['status'] == 'not_started'])
+    
+    # Upcoming deadlines
+    now = datetime.now(timezone.utc)
+    upcoming = []
+    for item in items:
+        if item.get('due_date') and item['status'] != 'completed':
+            due_date = datetime.fromisoformat(item['due_date']) if isinstance(item['due_date'], str) else item['due_date']
+            if due_date > now:
+                upcoming.append(item)
+    
+    upcoming.sort(key=lambda x: x['due_date'])
+    
+    return {
+        "items": items,
+        "stats": {
+            "total": total_items,
+            "completed": completed,
+            "in_progress": in_progress,
+            "not_started": not_started,
+            "completion_rate": round((completed / total_items * 100) if total_items > 0 else 0, 1)
+        },
+        "upcoming_deadlines": upcoming[:5]
+    }
+
+@api_router.post("/unnati/{user_id}/update")
+async def update_progress(user_id: str, update_data: UpdateProgressRequest, current_user: str = Depends(get_current_user)):
+    if user_id != current_user:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Find item
+    item = await db.progress_items.find_one({"id": update_data.item_id, "user_id": user_id})
+    if not item:
+        raise HTTPException(status_code=404, detail="Progress item not found")
+    
+    # Update fields
+    update_fields = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if update_data.status:
+        update_fields["status"] = update_data.status
+    if update_data.percent_complete is not None:
+        update_fields["percent_complete"] = update_data.percent_complete
+        # Auto-update status based on percentage
+        if update_data.percent_complete == 100:
+            update_fields["status"] = "completed"
+        elif update_data.percent_complete > 0:
+            update_fields["status"] = "in_progress"
+    
+    await db.progress_items.update_one(
+        {"id": update_data.item_id, "user_id": user_id},
+        {"$set": update_fields}
+    )
+    
+    return {"message": "Progress updated successfully"}
+
+@api_router.post("/unnati/{user_id}/import-roadmap")
+async def import_roadmap(user_id: str, import_data: ImportRoadmapRequest, current_user: str = Depends(get_current_user)):
+    if user_id != current_user:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    roadmap = import_data.roadmap
+    items_to_insert = []
+    
+    # Extract roadmap levels and create progress items
+    for level in roadmap.get('levels', []):
+        level_name = level.get('level', 'Unknown')
+        
+        # Add skills as items
+        for skill in level.get('skills', []):
+            item = {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "title": f"{level_name}: {skill}",
+                "type": "skill",
+                "status": "not_started",
+                "percent_complete": 0.0,
+                "start_date": None,
+                "due_date": None,
+                "description": f"Learn {skill} skill",
+                "metadata_json": {"level": level_name, "roadmap_career": roadmap.get('career')},
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            items_to_insert.append(item)
+        
+        # Add courses as items
+        for course in level.get('courses', []):
+            item = {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "title": course,
+                "type": "course",
+                "status": "not_started",
+                "percent_complete": 0.0,
+                "start_date": None,
+                "due_date": None,
+                "description": f"Complete {course}",
+                "metadata_json": {"level": level_name, "roadmap_career": roadmap.get('career')},
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            items_to_insert.append(item)
+        
+        # Add projects as items
+        for project in level.get('projects', []):
+            item = {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "title": project,
+                "type": "project",
+                "status": "not_started",
+                "percent_complete": 0.0,
+                "start_date": None,
+                "due_date": None,
+                "description": f"Build {project}",
+                "metadata_json": {"level": level_name, "roadmap_career": roadmap.get('career')},
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            items_to_insert.append(item)
+    
+    if items_to_insert:
+        await db.progress_items.insert_many(items_to_insert)
+    
+    return {"message": f"Imported {len(items_to_insert)} items from roadmap", "count": len(items_to_insert)}
+
+@api_router.post("/unnati/{user_id}/add-goal")
+async def add_custom_goal(user_id: str, goal_data: CreateGoalRequest, current_user: str = Depends(get_current_user)):
+    if user_id != current_user:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    goal_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "title": goal_data.title,
+        "type": "custom_goal",
+        "status": "not_started",
+        "percent_complete": 0.0,
+        "start_date": goal_data.start_date.isoformat() if goal_data.start_date else None,
+        "due_date": goal_data.due_date.isoformat() if goal_data.due_date else None,
+        "description": goal_data.description,
+        "metadata_json": {"custom": True},
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.progress_items.insert_one(goal_doc)
+    return {"message": "Goal created successfully", "goal_id": goal_doc["id"]}
+
+@api_router.post("/unnati/{user_id}/update-goal")
+async def update_custom_goal(user_id: str, goal_id: str, goal_data: CreateGoalRequest, current_user: str = Depends(get_current_user)):
+    if user_id != current_user:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    update_fields = {
+        "title": goal_data.title,
+        "description": goal_data.description,
+        "start_date": goal_data.start_date.isoformat() if goal_data.start_date else None,
+        "due_date": goal_data.due_date.isoformat() if goal_data.due_date else None,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    result = await db.progress_items.update_one(
+        {"id": goal_id, "user_id": user_id},
+        {"$set": update_fields}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    
+    return {"message": "Goal updated successfully"}
+
+@api_router.delete("/unnati/{user_id}/delete-goal/{goal_id}")
+async def delete_custom_goal(user_id: str, goal_id: str, current_user: str = Depends(get_current_user)):
+    if user_id != current_user:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    result = await db.progress_items.delete_one({"id": goal_id, "user_id": user_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    
+    return {"message": "Goal deleted successfully"}
+
 # JIGYASA - Explore Careers & Colleges
 @api_router.get("/jigyasa/colleges")
 async def get_colleges(search: Optional[str] = None, mode: Optional[str] = None):
