@@ -1,6 +1,8 @@
 import { useState } from "react";
 import axios from "axios";
-import { Brain, Send, Loader } from "lucide-react";
+import { Brain, Send, Loader, Download } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
