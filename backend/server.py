@@ -91,6 +91,36 @@ class User(BaseModel):
     email: str
     phone_no: str
     created_at: datetime
+
+# UNNATI Models
+class ProgressItem(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    title: str
+    type: str  # roadmap, course, project, custom_goal, skill
+    status: str  # not_started, in_progress, completed
+    percent_complete: float = 0.0
+    start_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    description: Optional[str] = None
+    metadata_json: Optional[Dict[str, Any]] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class CreateGoalRequest(BaseModel):
+    title: str
+    description: str
+    start_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+
+class UpdateProgressRequest(BaseModel):
+    item_id: str
+    status: Optional[str] = None
+    percent_complete: Optional[float] = None
+
+class ImportRoadmapRequest(BaseModel):
+    roadmap: Dict[str, Any]
+
 class UserProfile(BaseModel):
     user_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
