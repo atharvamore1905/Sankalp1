@@ -114,29 +114,114 @@ const Home = () => {
 
   return (
     <div className="home-page" data-testid="home-page">
+      {/* Hero Section */}
       <div className="hero-section">
         <div className="hero-content">
+          <div className="hero-logo">
+            <img src="/logo.png" alt="Sankalp Logo" />
+          </div>
           <h1 className="hero-title" data-testid="hero-title">
             Sankalp
           </h1>
-          <p className="hero-subtitle">AI Powered Career Ecosystem</p>
+          <p className="hero-tagline">Your AI-Powered Career Growth Partner</p>
           <p className="hero-description">
-            Your complete platform for career exploration, personalized guidance, skills mapping, insights, and community support.
+            Navigate your career with confidence using AI-driven insights, personalized roadmaps, and real-time market intelligence.
           </p>
-          <button 
-            className="btn-primary" 
-            onClick={() => navigate('/jigyasa')}
-            data-testid="get-started-btn"
-          >
-            Get Started
-          </button>
+          <div className="hero-buttons">
+            <button 
+              className="btn-primary" 
+              onClick={() => user ? navigate('/dashboard') : navigate('/signup')}
+              data-testid="get-started-btn"
+            >
+              {user ? 'Go to Dashboard' : 'Get Started Free'}
+            </button>
+            <button 
+              className="btn-secondary" 
+              onClick={() => navigate('/jigyasa')}
+              data-testid="explore-btn"
+            >
+              Explore Careers
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Why Choose Sankalp */}
+      <div className="features-section">
+        <div className="container">
+          <h2 className="section-title">Why Choose Sankalp?</h2>
+          <p className="section-subtitle">Empowering your career journey with cutting-edge technology</p>
+          <div className="features-grid">
+            {features.map((feature, index) => {
+              const Icon = feature.icon;
+              return (
+                <div key={index} className="feature-card" data-testid={`feature-${index}`}>
+                  <div className="feature-icon">
+                    <Icon size={32} />
+                  </div>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.description}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Mission & Vision */}
+      <div className="mission-vision-section">
+        <div className="container">
+          <div className="mv-grid">
+            <div className="mv-card mission-card">
+              <div className="mv-icon">
+                <Target size={48} />
+              </div>
+              <h2>Our Mission</h2>
+              <p>
+                To make career guidance accessible, structured, and data-driven for every student and professional in India. 
+                We believe that with the right tools and insights, anyone can achieve their career aspirations and unlock their true potential.
+              </p>
+            </div>
+            <div className="mv-card vision-card">
+              <div className="mv-icon">
+                <Globe size={48} />
+              </div>
+              <h2>Our Vision</h2>
+              <p>
+                To empower individuals with AI-powered tools that simplify decision-making, accelerate growth, and unlock opportunities. 
+                We envision a future where every career decision is informed, every skill is trackable, and every goal is achievable.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Highlights Section */}
+      <div className="highlights-section">
+        <div className="container">
+          <h2 className="section-title">Sankalp at a Glance</h2>
+          <div className="highlights-grid">
+            {highlights.map((highlight, index) => {
+              const Icon = highlight.icon;
+              return (
+                <div key={index} className="highlight-card" data-testid={`highlight-${index}`}>
+                  <div className="highlight-icon">
+                    <Icon size={40} />
+                  </div>
+                  <h3>{highlight.value}</h3>
+                  <p>{highlight.label}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Modules Section */}
       <div className="modules-section">
         <div className="container">
           <h2 className="section-title" data-testid="modules-section-title">Explore Our Modules</h2>
-          <p className="section-subtitle">Five powerful tools to shape your career journey</p>
+          <p className="section-subtitle">Six powerful tools to shape your career journey</p>
           
           <div className="modules-grid">
             {modules.map((module, index) => {
