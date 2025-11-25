@@ -108,7 +108,7 @@ const Navbar = () => {
         .navbar-container {
           max-width: 1400px;
           margin: 0 auto;
-          padding: 1rem 2rem;
+          padding: 1rem clamp(1rem, 3vw, 2rem);
           display: flex;
           justify-content: space-between;
           align-items: center;
