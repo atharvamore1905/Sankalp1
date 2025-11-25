@@ -264,33 +264,199 @@ const Home = () => {
       <style jsx>{`
         .home-page {
           min-height: 100vh;
+          background: #f5f7fa;
+        }
+
+        .hero-logo {
+          width: 120px;
+          height: 120px;
+          margin: 0 auto 2rem;
+          background: white;
+          border-radius: 20px;
+          padding: 1rem;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .hero-logo img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
         }
 
         .hero-title {
-          font-size: 4rem;
+          font-size: clamp(2.5rem, 6vw, 4.5rem);
           font-weight: 700;
           margin-bottom: 1rem;
           letter-spacing: -0.02em;
         }
 
-        .hero-subtitle {
-          font-size: 1.75rem;
+        .hero-tagline {
+          font-size: clamp(1.25rem, 3vw, 1.875rem);
           font-weight: 600;
           margin-bottom: 1.5rem;
           opacity: 0.95;
+          color: white;
         }
 
         .hero-description {
-          font-size: 1.125rem;
+          font-size: clamp(1rem, 2vw, 1.125rem);
           max-width: 700px;
           margin: 0 auto 2.5rem;
           opacity: 0.9;
           line-height: 1.8;
         }
 
-        .modules-section {
-          padding: 5rem 2rem;
+        .hero-buttons {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+          flex-wrap: wrap;
+        }
+
+        .features-section {
+          padding: clamp(3rem, 8vw, 5rem) clamp(1rem, 3vw, 2rem);
           background: white;
+        }
+
+        .features-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 2rem;
+          margin-top: 3rem;
+        }
+
+        .feature-card {
+          background: #f5f7fa;
+          padding: 2rem;
+          border-radius: 16px;
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
+          border: 1px solid #e8ecf1;
+        }
+
+        .feature-card:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 12px 40px rgba(102, 126, 234, 0.15);
+        }
+
+        .feature-icon {
+          width: 64px;
+          height: 64px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          margin-bottom: 1.5rem;
+        }
+
+        .feature-card h3 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          margin-bottom: 1rem;
+          color: #1a1a2e;
+        }
+
+        .feature-card p {
+          color: #6b7280;
+          line-height: 1.7;
+        }
+
+        .mission-vision-section {
+          padding: clamp(3rem, 8vw, 5rem) clamp(1rem, 3vw, 2rem);
+          background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+        }
+
+        .mv-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 2rem;
+          margin-top: 3rem;
+        }
+
+        .mv-card {
+          background: white;
+          padding: 3rem;
+          border-radius: 20px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+          text-align: center;
+        }
+
+        .mv-icon {
+          width: 80px;
+          height: 80px;
+          margin: 0 auto 2rem;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+        }
+
+        .mv-card h2 {
+          font-size: 1.75rem;
+          margin-bottom: 1.5rem;
+          color: #1a1a2e;
+        }
+
+        .mv-card p {
+          color: #4a5568;
+          line-height: 1.8;
+          font-size: 1rem;
+        }
+
+        .highlights-section {
+          padding: clamp(3rem, 8vw, 5rem) clamp(1rem, 3vw, 2rem);
+          background: white;
+        }
+
+        .highlights-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 2rem;
+          margin-top: 3rem;
+        }
+
+        .highlight-card {
+          text-align: center;
+          padding: 2rem;
+          background: #f5f7fa;
+          border-radius: 16px;
+          transition: transform 0.3s ease;
+        }
+
+        .highlight-card:hover {
+          transform: scale(1.05);
+        }
+
+        .highlight-icon {
+          width: 80px;
+          height: 80px;
+          margin: 0 auto 1rem;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+        }
+
+        .highlight-card h3 {
+          font-size: 2rem;
+          font-weight: 700;
+          margin-bottom: 0.5rem;
+          color: #667eea;
+        }
+
+        .highlight-card p {
+          color: #6b7280;
+          font-size: 0.875rem;
+        }
+
+        .modules-section {
+          padding: clamp(3rem, 8vw, 5rem) clamp(1rem, 3vw, 2rem);
+          background: #f5f7fa;
         }
 
         .container {
