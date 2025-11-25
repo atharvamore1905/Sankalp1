@@ -556,9 +556,16 @@ const Margadarshak = () => {
           margin-top: 1rem;
         }
 
+        .roadmap-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 2rem;
+        }
+
         .roadmap-duration {
           color: #6b7280;
-          margin-bottom: 2rem;
+          margin-bottom: 0;
         }
 
         .roadmap-section {
