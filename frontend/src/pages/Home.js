@@ -234,6 +234,27 @@ const Home = () => {
           box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
         }
 
+        .module-card.locked {
+          position: relative;
+          opacity: 0.9;
+        }
+
+        .lock-badge {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          border-radius: 50px;
+          color: #dc2626;
+          font-size: 0.75rem;
+          font-weight: 600;
+        }
+
         @media (max-width: 768px) {
           .hero-title {
             font-size: 2.5rem;
