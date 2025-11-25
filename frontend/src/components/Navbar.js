@@ -190,7 +190,7 @@ const Navbar = () => {
           color: #1a1a2e;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 968px) {
           .nav-menu {
             position: fixed;
             left: -100%;
@@ -212,6 +212,10 @@ const Navbar = () => {
           .nav-link {
             width: 100%;
             padding: 1rem;
+          }
+
+          .nav-auth {
+            display: none;
           }
 
           .nav-toggle {
