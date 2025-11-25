@@ -125,7 +125,7 @@ const Navbar = () => {
         }
 
         .logo-img {
-          height: 40px;
+          height: clamp(32px, 5vw, 40px);
           width: auto;
         }
 
