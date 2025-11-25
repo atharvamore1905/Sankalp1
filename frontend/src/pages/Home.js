@@ -1,10 +1,51 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Brain, Target, BarChart3, Users, TrendingUp, Lock } from "lucide-react";
+import { BookOpen, Brain, Target, BarChart3, Users, TrendingUp, Lock, Zap, Award, Shield, Rocket, CheckCircle2, Globe } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 const Home = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  const features = [
+    {
+      icon: Brain,
+      title: "Personalized AI Career Guidance",
+      description: "Get tailored career recommendations powered by advanced AI algorithms based on your unique profile and goals."
+    },
+    {
+      icon: TrendingUp,
+      title: "Roadmap-Based Skill Building",
+      description: "Follow structured learning paths from beginner to advanced levels with clear milestones and achievable goals."
+    },
+    {
+      icon: BarChart3,
+      title: "Real-Time Market Insights",
+      description: "Access live data on trending skills, salary insights, job demand, and emerging technologies in the market."
+    },
+    {
+      icon: Award,
+      title: "Verified College & Certification Data",
+      description: "Explore curated information on top colleges, courses, and certifications with authentic ratings and reviews."
+    },
+    {
+      icon: Target,
+      title: "Skill-to-Job Matching",
+      description: "Match your current skillset with job opportunities and identify gaps to accelerate your career growth."
+    },
+    {
+      icon: Users,
+      title: "Community Support + Progress Tracking",
+      description: "Connect with peers, track your learning progress, and get mentorship to stay motivated throughout your journey."
+    }
+  ];
+
+  const highlights = [
+    { icon: Rocket, value: "6", label: "Powerful Modules" },
+    { icon: Brain, value: "AI", label: "Powered Roadmaps" },
+    { icon: TrendingUp, value: "Live", label: "Progress Tracking" },
+    { icon: BarChart3, value: "Real-time", label: "Industry Trends" },
+    { icon: Shield, value: "100%", label: "Secure Accounts" }
+  ];
 
   const modules = [
     {
