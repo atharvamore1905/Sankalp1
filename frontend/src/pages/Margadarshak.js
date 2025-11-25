@@ -107,6 +107,24 @@ const Margadarshak = () => {
     setChatLoading(false);
   };
 
+  const handleImportToUnnati = async () => {
+    if (!roadmap || !user) return;
+    
+    setImporting(true);
+    try {
+      const res = await axios.post(
+        `${API}/unnati/${user.id}/import-roadmap`,
+        { roadmap },
+        { withCredentials: true }
+      );
+      toast.success(`Successfully imported ${res.data.count} items to UNNATI!`);
+    } catch (error) {
+      console.error("Error importing roadmap:", error);
+      toast.error("Failed to import roadmap. Please try again.");
+    }
+    setImporting(false);
+  };
+
   return (
     <div className="margadarshak-page" data-testid="margadarshak-page">
       <div className="page-header">
