@@ -322,8 +322,20 @@ const Margadarshak = () => {
           <TabsContent value="roadmap" data-testid="roadmap-content">
             {roadmap && (
               <div className="roadmap-container">
-                <h2>Career Roadmap: {roadmap.career}</h2>
-                <p className="roadmap-duration">Total Duration: {roadmap.total_duration_months} months</p>
+                <div className="roadmap-header">
+                  <div>
+                    <h2>Career Roadmap: {roadmap.career}</h2>
+                    <p className="roadmap-duration">Total Duration: {roadmap.total_duration_months} months</p>
+                  </div>
+                  <Button 
+                    onClick={handleImportToUnnati} 
+                    disabled={importing}
+                    data-testid="btn-import-to-unnati"
+                  >
+                    <Download size={20} />
+                    {importing ? 'Importing...' : 'Import to UNNATI'}
+                  </Button>
+                </div>
                 <div className="roadmap-timeline">
                   {roadmap.levels.map((level, idx) => (
                     <div key={idx} className="timeline-item" data-testid={`roadmap-level-${idx}`}>
