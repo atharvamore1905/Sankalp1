@@ -7,15 +7,28 @@ import { Button } from "@/components/ui/button";
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
-  const navLinks = [
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
+  const publicLinks = [
     { name: "Home", path: "/" },
     { name: "Jigyasa", path: "/jigyasa" },
+    { name: "Drishtikon", path: "/drishtikon" },
+  ];
+
+  const privateLinks = [
     { name: "Margadarshak", path: "/margadarshak" },
     { name: "Samarthya", path: "/samarthya" },
-    { name: "Drishtikon", path: "/drishtikon" },
+    { name: "Unnati", path: "/unnati" },
     { name: "Sahyog", path: "/sahyog" },
   ];
+
+  const navLinks = user ? [...publicLinks, ...privateLinks] : publicLinks;
 
   return (
     <nav className="navbar" data-testid="main-navbar">
