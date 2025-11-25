@@ -278,12 +278,70 @@ h1, h2, h3 {
   box-shadow: 0 0 0 2px #667eea;
 }
 
+/* Responsive Typography */
+@media (max-width: 1200px) {
+  html {
+    font-size: 15px;
+  }
+}
+
 @media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+
   .card-grid {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
   
   .hero-section {
     min-height: 70vh;
+    padding: 2rem 1rem;
+  }
+
+  .container {
+    padding: 0 1rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 13px;
+  }
+
+  .btn-primary, .btn-secondary {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Responsive Container */
+.container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 clamp(1rem, 3vw, 2rem);
+}
+
+/* Responsive Grid Utilities */
+.responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: clamp(1rem, 2vw, 2rem);
+}
+
+/* Responsive Flex Utilities */
+.responsive-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(0.5rem, 2vw, 1rem);
+}
+
+/* Touch-friendly buttons on mobile */
+@media (max-width: 768px) {
+  button, .btn-primary, .btn-secondary, a {
+    min-height: 44px;
+    min-width: 44px;
   }
 }
