@@ -87,6 +87,15 @@ const Navbar = () => {
               >
                 Sign Up
               </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/admin-login')}
+                data-testid="btn-admin-nav"
+                className="admin-access-btn"
+                title="Admin Access"
+              >
+                <Shield size={18} />
+              </Button>
             </>
           )}
         </div>
