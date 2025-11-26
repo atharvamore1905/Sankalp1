@@ -117,9 +117,6 @@ const Home = () => {
       {/* Hero Section */}
       <div className="hero-section">
         <div className="hero-content">
-          <div className="hero-logo">
-            <img src="/logo.png" alt="Sankalp Logo" />
-          </div>
           <h1 className="hero-title" data-testid="hero-title">
             Sankalp
           </h1>
