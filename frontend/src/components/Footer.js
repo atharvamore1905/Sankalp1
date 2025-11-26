@@ -50,6 +50,11 @@ const Footer = () => {
                   </Link>
                 </li>
               ))}
+              <li>
+                <Link to="/admin-login" className="admin-link" data-testid="footer-link-admin">
+                  Admin Access
+                </Link>
+              </li>
             </ul>
           </div>
 
