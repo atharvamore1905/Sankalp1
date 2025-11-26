@@ -130,8 +130,10 @@ function App() {
     <div className="App">
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
-          <Toaster />
+          <AdminAuthProvider>
+            <AppRoutes />
+            <Toaster />
+          </AdminAuthProvider>
         </AuthProvider>
       </BrowserRouter>
     </div>
