@@ -189,6 +189,15 @@ const Footer = () => {
           color: #667eea;
         }
 
+        .admin-link {
+          color: #ef4444 !important;
+          font-weight: 600;
+        }
+
+        .admin-link:hover {
+          color: #dc2626 !important;
+        }
+
         .contact-info {
           display: flex;
           flex-direction: column;
