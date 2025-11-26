@@ -274,6 +274,188 @@ async def logout(response: Response):
     response.delete_cookie(key="sankalp_token")
     return {"message": "Logged out successfully"}
 
+# ============= ADMIN AUTHENTICATION =============
+@api_router.post("/admin/login")
+async def admin_login(login_data: AdminLoginRequest, response: Response):
+    # Hardcoded admin credentials
+    ADMIN_EMAIL = "Admin123@gmail.com"
+    ADMIN_PASSWORD = "Admin123"
+    
+    if login_data.email != ADMIN_EMAIL or login_data.password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid admin credentials")
+    
+    # Create JWT token with admin flag
+    access_token = create_access_token(data={
+        "sub": "admin",
+        "email": ADMIN_EMAIL,
+        "is_admin": True
+    })
+    
+    # Set cookie
+    response.set_cookie(
+        key="sankalp_admin_token",
+        value=access_token,
+        httponly=True,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        samesite="lax"
+    )
+    
+    return {
+        "message": "Admin login successful",
+        "admin": {"email": ADMIN_EMAIL}
+    }
+
+@api_router.get("/admin/me")
+async def get_admin(admin_email: str = Depends(get_current_admin)):
+    return {"admin": {"email": admin_email, "role": "admin"}}
+
+@api_router.post("/admin/logout")
+async def admin_logout(response: Response):
+    response.delete_cookie(key="sankalp_admin_token")
+    return {"message": "Admin logged out successfully"}
+
+# ============= ADMIN DASHBOARD - STATISTICS =============
+@api_router.get("/admin/statistics")
+async def get_admin_statistics(admin_email: str = Depends(get_current_admin)):
+    # Count users
+    total_users = await db.users.count_documents({})
+    
+    # Get recent users
+    recent_users = await db.users.find({}, {"_id": 0, "password_hash": 0}).sort("created_at", -1).limit(5).to_list(5)
+    
+    return {
+        "total_users": total_users,
+        "total_skills": len(SKILLS_DATA),
+        "total_jobs": len(JOBS_DATA),
+        "total_courses": len(COURSES_DATA),
+        "recent_users": recent_users
+    }
+
+# ============= ADMIN - JIGYASA DATA MANAGEMENT =============
+# Colleges/Courses Management
+@api_router.post("/admin/jigyasa/colleges")
+async def add_college(college_data: dict, admin_email: str = Depends(get_current_admin)):
+    # Generate new ID
+    max_id = max([c.get('course_id', 0) for c in COURSES_DATA]) if COURSES_DATA else 0
+    college_data['course_id'] = max_id + 1
+    
+    COURSES_DATA.append(college_data)
+    
+    # Save to file
+    with open(ROOT_DIR / 'data_courses.json', 'w') as f:
+        json.dump(COURSES_DATA, f, indent=2)
+    
+    return {"message": "College added successfully", "college": college_data}
+
+@api_router.put("/admin/jigyasa/colleges/{course_id}")
+async def update_college(course_id: int, college_data: dict, admin_email: str = Depends(get_current_admin)):
+    for i, college in enumerate(COURSES_DATA):
+        if college['course_id'] == course_id:
+            college_data['course_id'] = course_id
+            COURSES_DATA[i] = college_data
+            
+            # Save to file
+            with open(ROOT_DIR / 'data_courses.json', 'w') as f:
+                json.dump(COURSES_DATA, f, indent=2)
+            
+            return {"message": "College updated successfully", "college": college_data}
+    
+    raise HTTPException(status_code=404, detail="College not found")
+
+@api_router.delete("/admin/jigyasa/colleges/{course_id}")
+async def delete_college(course_id: int, admin_email: str = Depends(get_current_admin)):
+    for i, college in enumerate(COURSES_DATA):
+        if college['course_id'] == course_id:
+            deleted = COURSES_DATA.pop(i)
+            
+            # Save to file
+            with open(ROOT_DIR / 'data_courses.json', 'w') as f:
+                json.dump(COURSES_DATA, f, indent=2)
+            
+            return {"message": "College deleted successfully", "college": deleted}
+    
+    raise HTTPException(status_code=404, detail="College not found")
+
+# Skills Management
+@api_router.post("/admin/jigyasa/skills")
+async def add_skill(skill_data: dict, admin_email: str = Depends(get_current_admin)):
+    max_id = max([s.get('skill_id', 0) for s in SKILLS_DATA]) if SKILLS_DATA else 0
+    skill_data['skill_id'] = max_id + 1
+    
+    SKILLS_DATA.append(skill_data)
+    
+    with open(ROOT_DIR / 'data_skills.json', 'w') as f:
+        json.dump(SKILLS_DATA, f, indent=2)
+    
+    return {"message": "Skill added successfully", "skill": skill_data}
+
+@api_router.put("/admin/jigyasa/skills/{skill_id}")
+async def update_skill(skill_id: int, skill_data: dict, admin_email: str = Depends(get_current_admin)):
+    for i, skill in enumerate(SKILLS_DATA):
+        if skill['skill_id'] == skill_id:
+            skill_data['skill_id'] = skill_id
+            SKILLS_DATA[i] = skill_data
+            
+            with open(ROOT_DIR / 'data_skills.json', 'w') as f:
+                json.dump(SKILLS_DATA, f, indent=2)
+            
+            return {"message": "Skill updated successfully", "skill": skill_data}
+    
+    raise HTTPException(status_code=404, detail="Skill not found")
+
+@api_router.delete("/admin/jigyasa/skills/{skill_id}")
+async def delete_skill(skill_id: int, admin_email: str = Depends(get_current_admin)):
+    for i, skill in enumerate(SKILLS_DATA):
+        if skill['skill_id'] == skill_id:
+            deleted = SKILLS_DATA.pop(i)
+            
+            with open(ROOT_DIR / 'data_skills.json', 'w') as f:
+                json.dump(SKILLS_DATA, f, indent=2)
+            
+            return {"message": "Skill deleted successfully", "skill": deleted}
+    
+    raise HTTPException(status_code=404, detail="Skill not found")
+
+# Jobs Management
+@api_router.post("/admin/jigyasa/jobs")
+async def add_job(job_data: dict, admin_email: str = Depends(get_current_admin)):
+    max_id = max([j.get('job_id', 0) for j in JOBS_DATA]) if JOBS_DATA else 0
+    job_data['job_id'] = max_id + 1
+    
+    JOBS_DATA.append(job_data)
+    
+    with open(ROOT_DIR / 'data_jobs.json', 'w') as f:
+        json.dump(JOBS_DATA, f, indent=2)
+    
+    return {"message": "Job added successfully", "job": job_data}
+
+@api_router.put("/admin/jigyasa/jobs/{job_id}")
+async def update_job(job_id: int, job_data: dict, admin_email: str = Depends(get_current_admin)):
+    for i, job in enumerate(JOBS_DATA):
+        if job['job_id'] == job_id:
+            job_data['job_id'] = job_id
+            JOBS_DATA[i] = job_data
+            
+            with open(ROOT_DIR / 'data_jobs.json', 'w') as f:
+                json.dump(JOBS_DATA, f, indent=2)
+            
+            return {"message": "Job updated successfully", "job": job_data}
+    
+    raise HTTPException(status_code=404, detail="Job not found")
+
+@api_router.delete("/admin/jigyasa/jobs/{job_id}")
+async def delete_job(job_id: int, admin_email: str = Depends(get_current_admin)):
+    for i, job in enumerate(JOBS_DATA):
+        if job['job_id'] == job_id:
+            deleted = JOBS_DATA.pop(i)
+            
+            with open(ROOT_DIR / 'data_jobs.json', 'w') as f:
+                json.dump(JOBS_DATA, f, indent=2)
+            
+            return {"message": "Job deleted successfully", "job": deleted}
+    
+    raise HTTPException(status_code=404, detail="Job not found")
+
 # ============= UNNATI - PROGRESS TRACKER =============
 @api_router.get("/unnati/{user_id}")
 async def get_progress(user_id: str, current_user: str = Depends(get_current_user)):
