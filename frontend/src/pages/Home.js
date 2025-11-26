@@ -532,11 +532,6 @@ const Home = () => {
         }
 
         @media (max-width: 768px) {
-          .hero-logo {
-            width: 80px;
-            height: 80px;
-          }
-
           .hero-buttons {
             flex-direction: column;
             width: 100%;
