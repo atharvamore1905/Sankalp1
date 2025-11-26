@@ -264,22 +264,6 @@ const Home = () => {
           background: #f5f7fa;
         }
 
-        .hero-logo {
-          width: 120px;
-          height: 120px;
-          margin: 0 auto 2rem;
-          background: white;
-          border-radius: 20px;
-          padding: 1rem;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .hero-logo img {
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-        }
-
         .hero-title {
           font-size: clamp(2.5rem, 6vw, 4.5rem);
           font-weight: 700;
