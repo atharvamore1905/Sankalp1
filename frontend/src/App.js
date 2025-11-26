@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "@/App.css";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AdminAuthProvider, useAdminAuth } from "./context/AdminAuthContext";
 import { Toaster } from "@/components/ui/sonner";
 import Home from "./pages/Home";
 import Jigyasa from "./pages/Jigyasa";
