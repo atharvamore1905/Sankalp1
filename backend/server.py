@@ -85,6 +85,10 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+class AdminLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
 class User(BaseModel):
     id: str
     name: str
