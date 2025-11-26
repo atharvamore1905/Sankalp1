@@ -36,6 +36,21 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// Admin Protected Route Component
+const AdminProtectedRoute = ({ children }) => {
+  const { admin, loading } = useAdminAuth();
+
+  if (loading) {
+    return <div className="loading-screen">Loading...</div>;
+  }
+
+  if (!admin) {
+    return <Navigate to="/admin-login" replace />;
+  }
+
+  return children;
+};
+
 function AppRoutes() {
   return (
     <div className="app-wrapper">
