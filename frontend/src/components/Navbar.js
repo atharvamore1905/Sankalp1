@@ -155,6 +155,16 @@ const Navbar = () => {
           color: white;
         }
 
+        .admin-access-btn {
+          color: #ef4444;
+          transition: all 0.3s ease;
+        }
+
+        .admin-access-btn:hover {
+          background: rgba(239, 68, 68, 0.1);
+          color: #dc2626;
+        }
+
         .nav-menu {
           display: flex;
           gap: 2rem;
