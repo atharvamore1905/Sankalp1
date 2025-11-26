@@ -72,6 +72,19 @@ async def get_current_user(authorization: Optional[str] = Cookie(None, alias="sa
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+async def get_current_admin(authorization: Optional[str] = Cookie(None, alias="sankalp_admin_token")):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(authorization, SECRET_KEY, algorithms=[ALGORITHM])
+        is_admin: bool = payload.get("is_admin", False)
+        admin_email: str = payload.get("email")
+        if not is_admin or admin_email != "Admin123@gmail.com":
+            raise HTTPException(status_code=403, detail="Admin access required")
+        return admin_email
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
 # Models
 # Auth Models
 class SignupRequest(BaseModel):
