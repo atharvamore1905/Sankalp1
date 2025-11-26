@@ -16,6 +16,8 @@ import Unnati from "./pages/Unnati";
 import Signin from "./pages/Signin";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboard from "./pages/AdminDashboard";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
