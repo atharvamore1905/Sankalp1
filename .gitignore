@@ -93,7 +93,9 @@ frontend/node_modules/.cache/default-development/3.pack
 # Environment files
 *.env
 *.env.*
--e 
-# Environment files
-*.env
-*.env.*
+
+# Python virtual environment and cache
+.venv/
+venv/
+__pycache__/
+*.pyc

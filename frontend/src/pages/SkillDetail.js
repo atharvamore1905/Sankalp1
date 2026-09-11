@@ -4,7 +4,7 @@ import axios from "axios";
 import { ArrowLeft, ExternalLink, Clock, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
 
 const SkillDetail = () => {

@@ -2,6 +2,8 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, Response, Cookie
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from starlette.staticfiles import StaticFiles
+from starlette.responses import FileResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -11,7 +13,13 @@ from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+import httpx
+try:
+    from google import genai
+    from google.genai import types
+    HAS_GOOGLE_GENAI = True
+except ImportError:
+    HAS_GOOGLE_GENAI = False
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 import bcrypt
@@ -20,9 +28,14 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+db_name = os.environ.get('DB_NAME', 'sankalp_db')
+try:
+    client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000)
+    db = client[db_name]
+except Exception as e:
+    logging.warning(f"MongoDB connection failed: {e}")
+    db = None
 
 # Load JSON data
 with open(ROOT_DIR / 'data_courses.json', 'r') as f:
@@ -812,6 +825,117 @@ async def generate_roadmap(req: CareerRecommendationRequest):
     
     return roadmap
 
+async def call_gemini_api(user_message: str, system_instruction: str) -> Optional[str]:
+    """Call Google Gemini API via official SDK or direct HTTP REST API."""
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if not gemini_key:
+        return None
+
+    # 1. Try google-genai SDK if available
+    if HAS_GOOGLE_GENAI:
+        try:
+            client = genai.Client(api_key=gemini_key)
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=user_message,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=0.7,
+                )
+            )
+            if response and response.text:
+                return response.text
+        except Exception as sdk_err:
+            logging.warning(f"google-genai SDK error: {sdk_err}, trying REST fallback...")
+
+    # 2. Direct HTTP REST API call (compatible with any environment)
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
+        payload = {
+            "system_instruction": {
+                "parts": [{"text": system_instruction}]
+            },
+            "contents": [
+                {"parts": [{"text": user_message}]}
+            ]
+        }
+        async with httpx.AsyncClient(timeout=15.0) as http_client:
+            resp = await http_client.post(url, json=payload)
+            if resp.status_code == 200:
+                data = resp.json()
+                candidates = data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if parts and "text" in parts[0]:
+                        return parts[0]["text"]
+            else:
+                logging.warning(f"Gemini HTTP returned status {resp.status_code}: {resp.text[:200]}")
+    except Exception as http_err:
+        logging.warning(f"Gemini HTTP request error: {http_err}")
+
+    return None
+
+def generate_margadarshak_fallback_response(user_message: str) -> str:
+    """Intelligent, structured fallback response based on Sankalp datasets when Gemini API is unavailable."""
+    msg = user_message.lower()
+    
+    # Detect category from message keywords
+    matched_job = None
+    if any(k in msg for k in ["ai", "machine learning", "deep learning", "artificial intelligence", "data science"]):
+        matched_job = next((j for j in JOBS_DATA if "ai" in j['job_title'].lower() or "machine learning" in j['job_title'].lower()), None)
+    elif any(k in msg for k in ["web", "full stack", "fullstack", "frontend", "backend", "react", "javascript"]):
+        matched_job = next((j for j in JOBS_DATA if "web" in j['job_title'].lower() or "developer" in j['job_title'].lower()), None)
+    elif any(k in msg for k in ["cloud", "devops", "aws", "docker", "kubernetes", "sre"]):
+        matched_job = next((j for j in JOBS_DATA if "cloud" in j['job_title'].lower() or "devops" in j['job_title'].lower()), None)
+    elif any(k in msg for k in ["security", "cyber", "hacker", "ethical"]):
+        matched_job = next((j for j in JOBS_DATA if "security" in j['job_title'].lower() or "cyber" in j['job_title'].lower()), None)
+    elif any(k in msg for k in ["design", "ui", "ux", "figma"]):
+        matched_job = next((j for j in JOBS_DATA if "designer" in j['job_title'].lower() or "design" in j['job_title'].lower()), None)
+    elif any(k in msg for k in ["blockchain", "web3", "solidity", "crypto"]):
+        matched_job = next((j for j in JOBS_DATA if "blockchain" in j['job_title'].lower()), None)
+    elif any(k in msg for k in ["game", "gaming", "unity", "unreal"]):
+        matched_job = next((j for j in JOBS_DATA if "game" in j['job_title'].lower()), None)
+    elif any(k in msg for k in ["data analyst", "analytics", "sql", "excel"]):
+        matched_job = next((j for j in JOBS_DATA if "data analyst" in j['job_title'].lower()), None)
+
+    if not matched_job:
+        matched_job = JOBS_DATA[0]
+
+    domain = matched_job.get("category", "Technology & Data")
+    role = matched_job.get("job_title", "Data Specialist")
+    skills = matched_job.get("skills_required", ["Python", "Problem Solving", "Databases"])
+    skills_s1 = ", ".join(skills[:2]) if len(skills) >= 2 else skills[0]
+    skills_s2 = ", ".join(skills[2:4]) if len(skills) >= 4 else (skills[1] if len(skills) > 1 else "Core tools")
+    
+    # Suggested courses from dataset
+    rel_courses = [c for c in COURSES_DATA if any(s in c.get('skills_covered', []) for s in skills)]
+    if not rel_courses:
+        rel_courses = COURSES_DATA[:2]
+    course1 = f"{rel_courses[0]['course_name']} ({rel_courses[0]['institution']})" if len(rel_courses) > 0 else "Foundational Certification"
+    course2 = f"{rel_courses[1]['course_name']} ({rel_courses[1]['institution']})" if len(rel_courses) > 1 else "Advanced Bootcamp"
+
+    # Related careers
+    rel_jobs = [j['job_title'] for j in JOBS_DATA if j.get('category') == domain][:3]
+    if not rel_jobs:
+        rel_jobs = [role]
+    paths_str = "\n".join([f"• {rj}" for rj in rel_jobs])
+
+    return f"""**Recommended Domain:** {domain}
+
+**Why:** High market demand ({matched_job.get('demand_level', 'High')} demand), competitive salary (~₹{matched_job.get('avg_salary', 600000)/100000:.1f}L/yr), and strong career progression opportunities.
+
+**Quick Roadmap:**
+• **Beginner (2-3 months):** Core foundations in {skills_s1}
+• **Intermediate (3-4 months):** Practical projects with {skills_s2}
+• **Advanced (4-5 months):** Industry capstone, portfolio development, and interview prep
+
+**Suggested Courses:**
+• {course1}
+• {course2}
+
+**Potential Career Paths:**
+{paths_str}"""
+
 @api_router.post("/margadarshak/chat")
 async def margadarshak_chat(req: MessageRequest):
     try:
@@ -840,28 +964,31 @@ FORMAT EXAMPLE:
 
 Keep it brief, clear, and actionable!"""
         
-        chat = LlmChat(
-            api_key=os.environ.get('EMERGENT_LLM_KEY'),
-            session_id=req.session_id,
-            system_message=system_message
-        ).with_model("openai", "gpt-4o-mini")
+        # Call Gemini API if key is present
+        response = await call_gemini_api(req.message, system_message)
         
-        user_message = UserMessage(text=req.message)
-        response = await chat.send_message(user_message)
+        # If Gemini is unavailable or not configured, use intelligent dataset-backed fallback
+        if not response:
+            response = generate_margadarshak_fallback_response(req.message)
         
-        # Store chat in database
-        chat_doc = {
-            "session_id": req.session_id,
-            "user_message": req.message,
-            "ai_response": response,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
-        await db.margadarshak_chats.insert_one(chat_doc)
+        # Store chat in database if available
+        if db is not None:
+            try:
+                chat_doc = {
+                    "session_id": req.session_id,
+                    "user_message": req.message,
+                    "ai_response": response,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+                await db.margadarshak_chats.insert_one(chat_doc)
+            except Exception as dbe:
+                logging.warning(f"Could not store chat in DB: {dbe}")
         
         return {"response": response, "session_id": req.session_id}
     except Exception as e:
         logging.error(f"Chat error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Chat service error: {str(e)}")
+        fallback = generate_margadarshak_fallback_response(req.message)
+        return {"response": fallback, "session_id": req.session_id}
 
 # SAMARTHYA - Skills-to-Jobs Mapping
 @api_router.post("/samarthya/profile")
@@ -1008,6 +1135,22 @@ app.include_router(api_router)
 #     allow_headers=["*"],
 # )
 
+# Mount static files and SPA fallback if frontend build exists
+frontend_build_dir = ROOT_DIR.parent / "frontend" / "build"
+if frontend_build_dir.exists():
+    static_dir = frontend_build_dir / "static"
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        if full_path.startswith("api"):
+            raise HTTPException(status_code=404, detail="API endpoint not found")
+        file_path = frontend_build_dir / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(frontend_build_dir / "index.html"))
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -1016,4 +1159,5 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    if client is not None:
+        client.close()

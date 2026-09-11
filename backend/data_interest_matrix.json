@@ -1,0 +1,50 @@
+{
+  "Data & Analytics": [
+    "Data Analyst",
+    "Business Intelligence (BI) Developer",
+    "Business Analyst (Tech)",
+    "Analytics Engineer"
+  ],
+  "AI / Machine Learning": [
+    "Machine Learning Engineer",
+    "Data Scientist",
+    "AI Research Intern / Scientist (Entry)"
+  ],
+  "Web Development": [
+    "Full-Stack Web Developer",
+    "Front-End Developer",
+    "Back-End Developer"
+  ],
+  "App Development": [
+    "Mobile App Developer (Flutter/React Native)"
+  ],
+  "Cybersecurity": [
+    "Cybersecurity Specialist",
+    "Cloud Security Engineer"
+  ],
+  "Cloud & DevOps": [
+    "DevOps Engineer",
+    "Cloud Engineer",
+    "Site Reliability Engineer (SRE)"
+  ],
+  "UI/UX & Design": [
+    "UI/UX Designer"
+  ],
+  "Gaming & Entertainment": [
+    "Game Developer",
+    "AR/VR Developer"
+  ],
+  "Networking / IT Support": [
+    "Systems Administrator / IT Infrastructure Engineer",
+    "Database Administrator (DBA)"
+  ],
+  "Product / Management": [
+    "Technical Project Manager",
+    "IT Consultant / Technology Architect"
+  ],
+  "IoT & Robotics": [
+    "IoT Solutions Engineer",
+    "Embedded Systems Engineer",
+    "Robotics / Automation Engineer"
+  ]
+}
