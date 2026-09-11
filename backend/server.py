@@ -89,11 +89,21 @@ SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "your-secret-key-change-in-product
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    try:
+        pwd_bytes = plain_password.encode('utf-8')[:72]
+        hashed_bytes = hashed_password.encode('utf-8')
+        return bcrypt.checkpw(pwd_bytes, hashed_bytes)
+    except Exception:
+        try:
+            return pwd_context.verify(plain_password, hashed_password)
+        except Exception:
+            return False
 
-def get_password_hash(password):
-    return pwd_context.hash(password)
+def get_password_hash(password: str) -> str:
+    pwd_bytes = password.encode('utf-8')[:72]
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
 
 def create_access_token(data: dict):
     to_encode = data.copy()
