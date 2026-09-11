@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Response, Cookie
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Response, Cookie, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -28,14 +28,34 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
-mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
-db_name = os.environ.get('DB_NAME', 'sankalp_db')
-try:
-    client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000)
-    db = client[db_name]
-except Exception as e:
-    logging.warning(f"MongoDB connection failed: {e}")
-    db = None
+# Default to None if not provided - DO NOT connect to localhost in production
+mongo_url = os.environ.get('MONGO_URL')
+db_name = os.environ.get('DB_NAME', 'sankalp')
+client = None
+db = None
+
+if mongo_url:
+    try:
+        client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
+        db = client[db_name]
+    except Exception as e:
+        logging.warning(f"MongoDB Atlas connection initialization failed: {e}")
+        db = None
+elif os.environ.get('LOCAL_DEV') == 'true':
+    # Only connect to localhost if explicitly in local development
+    try:
+        client = AsyncIOMotorClient('mongodb://localhost:27017', serverSelectionTimeoutMS=2000)
+        db = client[db_name]
+    except Exception as e:
+        logging.warning(f"Local MongoDB connection failed: {e}")
+        db = None
+
+def check_db():
+    if db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Database connection is not configured. Please set MONGO_URL in Vercel environment variables."
+        )
 
 # Load JSON data
 with open(ROOT_DIR / 'data_courses.json', 'r') as f:
@@ -82,11 +102,20 @@ def create_access_token(data: dict):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(authorization: Optional[str] = Cookie(None, alias="sankalp_token")):
-    if not authorization:
+async def get_current_user(
+    authorization: Optional[str] = Cookie(None, alias="sankalp_token"),
+    auth_header: Optional[str] = Header(None, alias="Authorization")
+):
+    token = authorization
+    if not token and auth_header:
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+        else:
+            token = auth_header.strip()
+    if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
-        payload = jwt.decode(authorization, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
@@ -94,11 +123,20 @@ async def get_current_user(authorization: Optional[str] = Cookie(None, alias="sa
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-async def get_current_admin(authorization: Optional[str] = Cookie(None, alias="sankalp_admin_token")):
-    if not authorization:
+async def get_current_admin(
+    authorization: Optional[str] = Cookie(None, alias="sankalp_admin_token"),
+    auth_header: Optional[str] = Header(None, alias="Authorization")
+):
+    token = authorization
+    if not token and auth_header:
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+        else:
+            token = auth_header.strip()
+    if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
-        payload = jwt.decode(authorization, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         is_admin: bool = payload.get("is_admin", False)
         admin_email: str = payload.get("email")
         if not is_admin or admin_email != "Admin123@gmail.com":
@@ -197,9 +235,34 @@ class MentorRequest(BaseModel):
     message: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+# ============= HEALTH CHECK =============
+@api_router.get("/health")
+async def health_check():
+    gemini_configured = bool(os.environ.get("GEMINI_API_KEY"))
+    mongo_configured = bool(os.environ.get("MONGO_URL"))
+    db_connected = False
+    db_error = None
+    if db is not None:
+        try:
+            await db.command("ping")
+            db_connected = True
+        except Exception as e:
+            db_error = str(e)
+            db_connected = False
+            
+    return {
+        "status": "ok",
+        "gemini_configured": gemini_configured,
+        "mongo_configured": mongo_configured,
+        "database_connected": db_connected,
+        "database_name": db_name if mongo_configured else None,
+        "database_error": db_error if mongo_configured and not db_connected else None
+    }
+
 # ============= AUTHENTICATION ENDPOINTS =============
 @api_router.post("/auth/signup")
 async def signup(signup_data: SignupRequest, response: Response):
+    check_db()
     # Validation
     if signup_data.password != signup_data.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
@@ -210,26 +273,30 @@ async def signup(signup_data: SignupRequest, response: Response):
     if not signup_data.phone_no.isdigit():
         raise HTTPException(status_code=400, detail="Phone number must be numeric")
     
-    # Check if user exists
-    existing_user = await db.users.find_one({"email": signup_data.email})
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Create user
-    user_id = str(uuid.uuid4())
-    hashed_password = get_password_hash(signup_data.password)
-    
-    user_doc = {
-        "id": user_id,
-        "name": signup_data.name,
-        "email": signup_data.email,
-        "phone_no": signup_data.phone_no,
-        "password_hash": hashed_password,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.users.insert_one(user_doc)
+    try:
+        existing_user = await db.users.find_one({"email": signup_data.email})
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        user_id = str(uuid.uuid4())
+        hashed_password = get_password_hash(signup_data.password)
+        
+        user_doc = {
+            "id": user_id,
+            "name": signup_data.name,
+            "email": signup_data.email,
+            "phone_no": signup_data.phone_no,
+            "password_hash": hashed_password,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.users.insert_one(user_doc)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Signup DB error: {e}")
+        raise HTTPException(status_code=503, detail=f"Database error: {str(e)}")
     
     # Create JWT token
     access_token = create_access_token(data={"sub": user_id, "email": signup_data.email})
@@ -240,11 +307,13 @@ async def signup(signup_data: SignupRequest, response: Response):
         value=access_token,
         httponly=True,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        samesite="lax"
+        samesite="lax",
+        secure=True
     )
     
     return {
         "message": "User created successfully",
+        "token": access_token,
         "user": {
             "id": user_id,
             "name": signup_data.name,
@@ -254,8 +323,13 @@ async def signup(signup_data: SignupRequest, response: Response):
 
 @api_router.post("/auth/login")
 async def login(login_data: LoginRequest, response: Response):
-    # Find user
-    user = await db.users.find_one({"email": login_data.email})
+    check_db()
+    try:
+        user = await db.users.find_one({"email": login_data.email})
+    except Exception as e:
+        logging.error(f"Login DB error: {e}")
+        raise HTTPException(status_code=503, detail=f"Database error: {str(e)}")
+        
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
@@ -272,11 +346,13 @@ async def login(login_data: LoginRequest, response: Response):
         value=access_token,
         httponly=True,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        samesite="lax"
+        samesite="lax",
+        secure=True
     )
     
     return {
         "message": "Login successful",
+        "token": access_token,
         "user": {
             "id": user["id"],
             "name": user["name"],
@@ -286,14 +362,20 @@ async def login(login_data: LoginRequest, response: Response):
 
 @api_router.get("/auth/me")
 async def get_me(user_id: str = Depends(get_current_user)):
-    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    check_db()
+    try:
+        user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    except Exception as e:
+        logging.error(f"Auth me DB error: {e}")
+        raise HTTPException(status_code=503, detail=f"Database error: {str(e)}")
+        
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return {"user": user}
 
 @api_router.post("/auth/logout")
 async def logout(response: Response):
-    response.delete_cookie(key="sankalp_token")
+    response.delete_cookie(key="sankalp_token", samesite="lax", secure=True)
     return {"message": "Logged out successfully"}
 
 # ============= ADMIN AUTHENTICATION =============
@@ -481,6 +563,7 @@ async def delete_job(job_id: int, admin_email: str = Depends(get_current_admin))
 # ============= UNNATI - PROGRESS TRACKER =============
 @api_router.get("/unnati/{user_id}")
 async def get_progress(user_id: str, current_user: str = Depends(get_current_user)):
+    check_db()
     if user_id != current_user:
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -517,6 +600,7 @@ async def get_progress(user_id: str, current_user: str = Depends(get_current_use
 
 @api_router.post("/unnati/{user_id}/update")
 async def update_progress(user_id: str, update_data: UpdateProgressRequest, current_user: str = Depends(get_current_user)):
+    check_db()
     if user_id != current_user:
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -546,6 +630,7 @@ async def update_progress(user_id: str, update_data: UpdateProgressRequest, curr
 
 @api_router.post("/unnati/{user_id}/import-roadmap")
 async def import_roadmap(user_id: str, import_data: ImportRoadmapRequest, current_user: str = Depends(get_current_user)):
+    check_db()
     if user_id != current_user:
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -617,6 +702,7 @@ async def import_roadmap(user_id: str, import_data: ImportRoadmapRequest, curren
 
 @api_router.post("/unnati/{user_id}/add-goal")
 async def add_custom_goal(user_id: str, goal_data: CreateGoalRequest, current_user: str = Depends(get_current_user)):
+    check_db()
     if user_id != current_user:
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -640,6 +726,7 @@ async def add_custom_goal(user_id: str, goal_data: CreateGoalRequest, current_us
 
 @api_router.post("/unnati/{user_id}/update-goal")
 async def update_custom_goal(user_id: str, goal_id: str, goal_data: CreateGoalRequest, current_user: str = Depends(get_current_user)):
+    check_db()
     if user_id != current_user:
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -663,6 +750,7 @@ async def update_custom_goal(user_id: str, goal_id: str, goal_data: CreateGoalRe
 
 @api_router.delete("/unnati/{user_id}/delete-goal/{goal_id}")
 async def delete_custom_goal(user_id: str, goal_id: str, current_user: str = Depends(get_current_user)):
+    check_db()
     if user_id != current_user:
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -993,6 +1081,7 @@ Keep it brief, clear, and actionable!"""
 # SAMARTHYA - Skills-to-Jobs Mapping
 @api_router.post("/samarthya/profile")
 async def create_profile(profile: UserProfile):
+    check_db()
     profile_dict = profile.model_dump()
     profile_dict['created_at'] = profile_dict['created_at'].isoformat()
     await db.user_profiles.insert_one(profile_dict)
@@ -1091,17 +1180,24 @@ async def get_salary_trends():
 # SAHYOG - Community Support
 @api_router.get("/sahyog/posts")
 async def get_community_posts(type: Optional[str] = None):
-    query = {}
-    if type:
-        query['type'] = type
-    posts = await db.community_posts.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
-    for post in posts:
-        if isinstance(post.get('created_at'), str):
-            post['created_at'] = post['created_at']
-    return {"posts": posts, "total": len(posts)}
+    if db is None:
+        return {"posts": [], "total": 0}
+    try:
+        query = {}
+        if type:
+            query['type'] = type
+        posts = await db.community_posts.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+        for post in posts:
+            if isinstance(post.get('created_at'), str):
+                post['created_at'] = post['created_at']
+        return {"posts": posts, "total": len(posts)}
+    except Exception as e:
+        logging.warning(f"Error fetching community posts: {e}")
+        return {"posts": [], "total": 0}
 
 @api_router.post("/sahyog/posts")
 async def create_community_post(post: CommunityPost):
+    check_db()
     post_dict = post.model_dump()
     post_dict['created_at'] = post_dict['created_at'].isoformat()
     await db.community_posts.insert_one(post_dict)
@@ -1109,6 +1205,7 @@ async def create_community_post(post: CommunityPost):
 
 @api_router.post("/sahyog/mentor-request")
 async def create_mentor_request(request: MentorRequest):
+    check_db()
     request_dict = request.model_dump()
     request_dict['created_at'] = request_dict['created_at'].isoformat()
     await db.mentor_requests.insert_one(request_dict)

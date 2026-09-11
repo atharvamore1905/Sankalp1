@@ -6,6 +6,15 @@ const AuthContext = createContext();
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
 
+// Setup axios interceptor to attach Authorization header if token exists in localStorage
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('sankalp_token');
+  if (token && !config.headers['Authorization']) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,7 +25,9 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     try {
-      const res = await axios.get(`${API}/auth/me`, { withCredentials: true });
+      const token = localStorage.getItem('sankalp_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.get(`${API}/auth/me`, { withCredentials: true, headers });
       setUser(res.data.user);
     } catch (error) {
       setUser(null);
@@ -26,6 +37,9 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const res = await axios.post(`${API}/auth/login`, { email, password }, { withCredentials: true });
+    if (res.data?.token) {
+      localStorage.setItem('sankalp_token', res.data.token);
+    }
     setUser(res.data.user);
     return res.data;
   };
@@ -35,12 +49,20 @@ export const AuthProvider = ({ children }) => {
       { name, email, phone_no, password, confirm_password },
       { withCredentials: true }
     );
+    if (res.data?.token) {
+      localStorage.setItem('sankalp_token', res.data.token);
+    }
     setUser(res.data.user);
     return res.data;
   };
 
   const logout = async () => {
-    await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
+    try {
+      await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
+    } catch (e) {
+      // Ignore logout errors if backend unreachable
+    }
+    localStorage.removeItem('sankalp_token');
     setUser(null);
   };
 
