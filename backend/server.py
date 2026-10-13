@@ -256,21 +256,7 @@ class TriggerSyncRequest(BaseModel):
     payload: Optional[Dict[str, List[Dict[str, Any]]]] = None
 
 
-# ============= LIFECYCLE STARTUP & HEALTH CHECK =============
-@app.on_event("startup")
-async def startup_event():
-    logger.info("Initializing Sankalp Application...")
-    if db is not None:
-        try:
-            await init_db_indexes(db)
-            jobs_count = await db.jobs.count_documents({})
-            if jobs_count == 0:
-                logger.info("MongoDB catalog collections are unseeded. Running auto-seed migration...")
-                await run_data_migration(actor="system:startup_auto_seed")
-            else:
-                logger.info(f"MongoDB connected with {jobs_count} jobs cataloged.")
-        except Exception as e:
-            logger.warning(f"Startup MongoDB setup note: {e}")
+# ============= HEALTH CHECK =============
 
 @api_router.get("/health")
 async def health_check():
