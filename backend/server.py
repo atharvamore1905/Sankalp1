@@ -6,6 +6,7 @@ from starlette.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import sys
 import logging
 from collections import Counter
 import json
@@ -25,6 +26,10 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 import bcrypt
 
+ROOT_DIR = Path(__file__).parent.resolve()
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 # Internal modular imports
 from models import (
     JobModel, SkillModel, CourseModel, CollegeModel, InterestMappingModel,
@@ -41,8 +46,6 @@ from scoring import (
 )
 from ingestion import IngestionPipeline, CuratedPublicFeedAdapter, ManualUploadAdapter
 from migration import run_data_migration
-
-ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 logging.basicConfig(
