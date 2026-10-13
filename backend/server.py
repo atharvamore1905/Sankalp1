@@ -36,7 +36,7 @@ db = None
 
 if mongo_url:
     try:
-        client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
+        client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000, maxIdleTimeMS=45000)
         db = client[db_name]
     except Exception as e:
         logging.warning(f"MongoDB Atlas connection initialization failed: {e}")
