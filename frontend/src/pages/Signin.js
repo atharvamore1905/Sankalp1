@@ -57,10 +57,10 @@ const Signin = () => {
             <div className="guest-hero-box" data-testid="guest-hero-box">
               <div className="guest-hero-badge">
                 <Sparkles size={14} className="text-amber-300" />
-                <span>Recruiter & Visitor Preview</span>
+                <span>Guest Mode</span>
               </div>
               <h4>Explore Sankalp Instantly</h4>
-              <p>Experience all 6 modules, sample student profile, and AI career counseling with zero registration.</p>
+              <p>Experience all 6 modules and AI career counseling with zero registration.</p>
               <Button
                 type="button"
                 onClick={handleGuestLogin}
