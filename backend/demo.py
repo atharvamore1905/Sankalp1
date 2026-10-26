@@ -9,11 +9,11 @@ logger = logging.getLogger("sankalp.demo")
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
-# Realistic fictional sample candidate profile for demonstration
+# Sample candidate profile for demo mode
 SAMPLE_DEMO_PROFILE = {
-    "name": "Aarav Sharma",
+    "name": "Guest User",
     "headline": "Pre-final Year B.Tech Student & Aspiring Data Specialist",
-    "email": "aarav.demo@sankalp.ai",
+    "email": "guest@sankalp.ai",
     "phone_no": "+91 98765 43210",
     "location": "Pune, Maharashtra",
     "education": {
@@ -115,8 +115,8 @@ class DemoSessionManager:
         session_data = {
             "session_id": sid,
             "user_id": sid,
-            "name": "Aarav Sharma (Guest Demo)",
-            "email": f"demo.{sid[:10]}@guest.sankalp.ai",
+            "name": "Guest User",
+            "email": f"guest.{sid[:8]}@sankalp.ai",
             "phone_no": "+91 98765 43210",
             "role": "guest",
             "is_guest": True,

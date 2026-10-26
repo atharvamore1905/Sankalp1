@@ -95,13 +95,13 @@ const Samarthya = () => {
             <div className="candidate-card-header">
               <div className="candidate-badge-row">
                 <span className="demo-pill">
-                  <Sparkles size={14} /> Fictional Demo Candidate
+                  <Sparkles size={14} /> Guest Profile
                 </span>
-                <span className="demo-session-pill">Isolated Sandbox</span>
+                <span className="demo-session-pill">Guest Session</span>
               </div>
               <h2 className="candidate-name">{profile.name}</h2>
               <p className="candidate-sub">
-                {profile.education?.degree} ({profile.education?.year}) • {profile.education?.institution}
+                {profile.education?.degree} • {profile.education?.institution}
               </p>
             </div>
 
@@ -132,11 +132,11 @@ const Samarthya = () => {
                   className="load-demo-skills-btn"
                   data-testid="btn-load-demo-skills"
                 >
-                  <Sparkles size={16} /> Load Aarav's Skills ({profile.skills?.length || 5})
+                  <Sparkles size={16} /> Load Sample Skills ({profile.skills?.length || 5})
                 </Button>
               </div>
               <p className="demo-note">
-                This candidate profile is demonstration data. Any skill additions or edits are kept in your isolated session.
+                Testing in guest mode. Any skill additions or edits are kept in your session.
               </p>
             </div>
           </div>

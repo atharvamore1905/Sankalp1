@@ -52,7 +52,7 @@ const Margadarshak = () => {
       time_availability: "6 months",
       future_goals: "Aspiring AI/ML Engineer aiming to build real-world intelligent systems and scalable pipelines."
     });
-    toast.success("Loaded Aarav Sharma's sample academic profile!");
+    toast.success("Loaded sample profile data!");
   };
 
   const handleRecommendation = async () => {
@@ -185,7 +185,7 @@ const Margadarshak = () => {
                     className="demo-fill-btn"
                     data-testid="btn-fill-demo-data"
                   >
-                    <Sparkles size={16} /> Fill Demo Profile (Aarav Sharma)
+                    <Sparkles size={16} /> Fill Sample Profile
                   </Button>
                 </div>
 

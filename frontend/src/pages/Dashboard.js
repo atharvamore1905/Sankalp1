@@ -69,7 +69,7 @@ const Dashboard = () => {
           </h1>
           <p className="welcome-subtitle">
             {user?.is_guest 
-              ? "Exploring Sankalp as demonstration candidate Aarav Sharma. Test all modules freely!"
+              ? "Exploring Sankalp in Guest Mode. Test all modules freely!"
               : "Continue your career journey with Sankalp"}
           </p>
         </div>
@@ -84,17 +84,16 @@ const Dashboard = () => {
                   <UserCheck size={28} color="#4f46e5" />
                 </div>
                 <div>
-                  <h3 className="demo-banner-title">Demo Profile Active: Aarav Sharma</h3>
+                  <h3 className="demo-banner-title">Guest Demo Mode</h3>
                   <p className="demo-banner-text">
-                    B.Tech Computer Science (3rd Year) • PICT Pune • CGPA: <strong>8.2/10</strong> • 10th: <strong>88%</strong> • 12th: <strong>84%</strong> • Backlogs: <strong>0</strong>
+                    You are exploring Sankalp as a Guest User. You can test career path generation, skill mapping, and progress tracking across all modules.
                   </p>
                 </div>
               </div>
               <div className="demo-banner-chips">
                 <span className="demo-chip">Target: Data Science & AI</span>
-                <span className="demo-chip">5 Preloaded Skills</span>
-                <span className="demo-chip">Isolated Sandbox Session</span>
-                <span className="demo-chip">Safe Simulated Posts</span>
+                <span className="demo-chip">Interactive Sandbox</span>
+                <span className="demo-chip">Full 6 Modules Access</span>
               </div>
             </div>
             <div className="demo-banner-actions">

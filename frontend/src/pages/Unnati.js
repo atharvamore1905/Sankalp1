@@ -110,7 +110,7 @@ const Unnati = () => {
               <Sparkles size={20} color="#b45309" />
             </div>
             <div className="unnati-demo-text">
-              <strong>Demo Sandbox Mode:</strong> You are exploring Unnati as demonstration candidate Aarav Sharma. You can update goal statuses, complete milestones, create custom goals, or import Margadarshak roadmaps. Changes reflect live in this session.
+              <strong>Guest Mode:</strong> You are exploring Unnati as a Guest User. You can update goal statuses, complete milestones, create custom goals, or import Margadarshak roadmaps. Changes reflect live in this session.
             </div>
             <Button
               variant="outline"

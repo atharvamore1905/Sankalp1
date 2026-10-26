@@ -58,7 +58,7 @@ async def main():
             data1 = res1.json()
             assert "token" in data1, "Response missing token"
             assert data1["user"]["is_guest"] is True, "User is_guest flag not True"
-            assert "Aarav Sharma" in data1["user"]["name"], f"Unexpected demo name: {data1['user']['name']}"
+            assert data1["user"]["name"] == "Guest User", f"Unexpected demo name: {data1['user']['name']}"
             assert str(data1["user"]["id"]).startswith("guest_"), "User ID does not start with guest_"
             guest_token = data1["token"]
             guest_id = data1["user"]["id"]
@@ -213,7 +213,7 @@ async def main():
             prof_data = res_prof.json()
             assert prof_data["is_demo"] is True
             profile = prof_data["profile"]
-            assert "Aarav Sharma" in profile["name"]
+            assert profile["name"] == "Guest User"
             assert "Python" in profile["skills"]
 
             # Update demo skills temporarily

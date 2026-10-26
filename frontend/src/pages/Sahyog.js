@@ -33,7 +33,7 @@ const Sahyog = () => {
 
   const [mentorRequest, setMentorRequest] = useState({
     name: user?.name || "",
-    email: user?.is_guest ? "aarav.sharma@example.com" : (user?.email || ""),
+    email: user?.is_guest ? "guest@sankalp.ai" : (user?.email || ""),
     domain: "Data Science & AI",
     message: ""
   });
@@ -48,7 +48,7 @@ const Sahyog = () => {
       setMentorRequest(prev => ({ 
         ...prev, 
         name: user.name,
-        email: user.is_guest ? "aarav.sharma@example.com" : (user.email || prev.email)
+        email: user.is_guest ? "guest@sankalp.ai" : (user.email || prev.email)
       }));
     }
   }, [user]);
@@ -95,7 +95,7 @@ const Sahyog = () => {
       const res = await axios.post(`${API}/sahyog/mentor-request`, mentorRequest, { withCredentials: true });
       setMentorRequest({ 
         name: user?.name || "", 
-        email: user?.is_guest ? "aarav.sharma@example.com" : (user?.email || ""), 
+        email: user?.is_guest ? "guest@sankalp.ai" : (user?.email || ""), 
         domain: "Data Science & AI", 
         message: "" 
       });
@@ -137,7 +137,7 @@ const Sahyog = () => {
               <Sparkles size={20} color="#047857" />
             </div>
             <div className="sahyog-demo-text">
-              <strong>Demo Sandbox Mode:</strong> You are browsing Sahyog as Aarav Sharma. You can create discussion posts and request mentors; these actions are safely simulated so production community boards remain clean.
+              <strong>Guest Mode:</strong> You are browsing Sahyog as a Guest User. You can create discussion posts and request mentors; these actions are safely simulated so production community boards remain clean.
             </div>
           </div>
         )}
