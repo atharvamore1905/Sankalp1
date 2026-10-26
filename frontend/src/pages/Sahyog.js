@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Users, Plus, MessageCircle, BookOpen, FileText, UserPlus } from "lucide-react";
+import { Users, Plus, MessageCircle, BookOpen, FileText, UserPlus, Sparkles } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +16,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
 
 const Sahyog = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("community");
   const [posts, setPosts] = useState([]);
   const [resources, setResources] = useState([]);
@@ -25,19 +28,30 @@ const Sahyog = () => {
     title: "",
     content: "",
     type: "question",
-    author: ""
+    author: user?.name || "Student"
   });
 
   const [mentorRequest, setMentorRequest] = useState({
-    name: "",
-    email: "",
-    domain: "",
+    name: user?.name || "",
+    email: user?.is_guest ? "aarav.sharma@example.com" : (user?.email || ""),
+    domain: "Data Science & AI",
     message: ""
   });
 
   useEffect(() => {
     fetchData();
   }, [activeTab]);
+
+  useEffect(() => {
+    if (user?.name) {
+      setNewPost(prev => ({ ...prev, author: user.name }));
+      setMentorRequest(prev => ({ 
+        ...prev, 
+        name: user.name,
+        email: user.is_guest ? "aarav.sharma@example.com" : (user.email || prev.email)
+      }));
+    }
+  }, [user]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -59,12 +73,18 @@ const Sahyog = () => {
     if (!newPost.title || !newPost.content || !newPost.author) return;
     
     try {
-      await axios.post(`${API}/sahyog/posts`, newPost);
-      setNewPost({ title: "", content: "", type: "question", author: "" });
+      const res = await axios.post(`${API}/sahyog/posts`, newPost, { withCredentials: true });
+      setNewPost({ title: "", content: "", type: "question", author: user?.name || "Student" });
       setDialogOpen(false);
-      fetchData();
+      if (res.data?.is_demo) {
+        toast.info("Demo Mode: Community post simulated successfully in sandbox!");
+      } else {
+        toast.success("Post created successfully!");
+        fetchData();
+      }
     } catch (error) {
       console.error("Error creating post:", error);
+      toast.error("Failed to create post.");
     }
   };
 
@@ -72,12 +92,22 @@ const Sahyog = () => {
     if (!mentorRequest.name || !mentorRequest.email || !mentorRequest.domain) return;
     
     try {
-      await axios.post(`${API}/sahyog/mentor-request`, mentorRequest);
-      setMentorRequest({ name: "", email: "", domain: "", message: "" });
+      const res = await axios.post(`${API}/sahyog/mentor-request`, mentorRequest, { withCredentials: true });
+      setMentorRequest({ 
+        name: user?.name || "", 
+        email: user?.is_guest ? "aarav.sharma@example.com" : (user?.email || ""), 
+        domain: "Data Science & AI", 
+        message: "" 
+      });
       setMentorDialogOpen(false);
-      alert("Mentor request submitted successfully!");
+      if (res.data?.is_demo) {
+        toast.info("Demo Mode: Mentor request simulated successfully in sandbox!");
+      } else {
+        toast.success("Mentor request submitted successfully!");
+      }
     } catch (error) {
       console.error("Error submitting mentor request:", error);
+      toast.error("Failed to submit mentor request.");
     }
   };
 
@@ -96,11 +126,22 @@ const Sahyog = () => {
         <div className="container">
           <Users size={48} />
           <h1 className="page-title" data-testid="page-title">SAHYOG</h1>
-          <p className="page-subtitle">Community Support & Resources</p>
+          <p className="page-subtitle">Community Support, Mentorship & Collaboration</p>
         </div>
       </div>
 
       <div className="container">
+        {user?.is_guest && (
+          <div className="sahyog-demo-banner" data-testid="sahyog-demo-banner">
+            <div className="sahyog-demo-icon">
+              <Sparkles size={20} color="#047857" />
+            </div>
+            <div className="sahyog-demo-text">
+              <strong>Demo Sandbox Mode:</strong> You are browsing Sahyog as Aarav Sharma. You can create discussion posts and request mentors; these actions are safely simulated so production community boards remain clean.
+            </div>
+          </div>
+        )}
+
         <div className="actions-bar">
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -289,6 +330,7 @@ const Sahyog = () => {
         .sahyog-page {
           min-height: 100vh;
           padding-bottom: 3rem;
+          background: #f8fafc;
         }
 
         .page-header {
@@ -313,6 +355,35 @@ const Sahyog = () => {
           max-width: 1200px;
           margin: 0 auto;
           padding: 2rem;
+        }
+
+        .sahyog-demo-banner {
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          border-radius: 12px;
+          padding: 1.25rem 1.5rem;
+          margin-bottom: 2rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .sahyog-demo-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          background: #d1fae5;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .sahyog-demo-text {
+          flex: 1;
+          color: #065f46;
+          font-size: 0.92rem;
+          line-height: 1.5;
         }
 
         .actions-bar {
@@ -427,6 +498,19 @@ const Sahyog = () => {
           font-size: 1.125rem;
           margin-bottom: 1rem;
           color: #1a1a2e;
+        }
+
+        .badge {
+          padding: 0.25rem 0.75rem;
+          border-radius: 50px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+        }
+
+        .badge-primary {
+          background: #667eea20;
+          color: #667eea;
         }
 
         .loading {

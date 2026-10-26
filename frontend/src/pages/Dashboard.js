@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Brain, Target, Users, TrendingUp, BookOpen, BarChart3 } from 'lucide-react';
+import { Brain, Target, Users, TrendingUp, BookOpen, BarChart3, Sparkles, UserCheck, ArrowRight, ShieldCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -57,14 +57,58 @@ const Dashboard = () => {
     <div className="dashboard-page" data-testid="dashboard-page">
       <div className="dashboard-header">
         <div className="container">
+          <div className="header-badge-row">
+            {user?.is_guest && (
+              <span className="demo-header-badge" data-testid="dashboard-demo-badge">
+                <Sparkles size={16} /> Guest Demo Mode
+              </span>
+            )}
+          </div>
           <h1 className="welcome-title" data-testid="welcome-message">
-            Welcome back, {user?.name}! 🚀
+            Welcome back, {user?.name || "Student"}! 🚀
           </h1>
-          <p className="welcome-subtitle">Continue your career journey with Sankalp</p>
+          <p className="welcome-subtitle">
+            {user?.is_guest 
+              ? "Exploring Sankalp as demonstration candidate Aarav Sharma. Test all modules freely!"
+              : "Continue your career journey with Sankalp"}
+          </p>
         </div>
       </div>
 
       <div className="container dashboard-content">
+        {user?.is_guest && (
+          <div className="demo-hero-banner" data-testid="demo-hero-banner">
+            <div className="demo-banner-content">
+              <div className="demo-banner-header">
+                <div className="demo-icon-box">
+                  <UserCheck size={28} color="#4f46e5" />
+                </div>
+                <div>
+                  <h3 className="demo-banner-title">Demo Profile Active: Aarav Sharma</h3>
+                  <p className="demo-banner-text">
+                    B.Tech Computer Science (3rd Year) • PICT Pune • CGPA: <strong>8.2/10</strong> • 10th: <strong>88%</strong> • 12th: <strong>84%</strong> • Backlogs: <strong>0</strong>
+                  </p>
+                </div>
+              </div>
+              <div className="demo-banner-chips">
+                <span className="demo-chip">Target: Data Science & AI</span>
+                <span className="demo-chip">5 Preloaded Skills</span>
+                <span className="demo-chip">Isolated Sandbox Session</span>
+                <span className="demo-chip">Safe Simulated Posts</span>
+              </div>
+            </div>
+            <div className="demo-banner-actions">
+              <Button 
+                onClick={() => navigate('/signup')}
+                className="demo-signup-cta"
+                data-testid="btn-demo-banner-signup"
+              >
+                Create Account to Save Progress <ArrowRight size={16} />
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="modules-grid">
           {modules.map((module, index) => {
             const Icon = module.icon;
@@ -97,7 +141,7 @@ const Dashboard = () => {
       <style jsx>{`
         .dashboard-page {
           min-height: 100vh;
-          background: #f5f7fa;
+          background: #f8fafc;
         }
 
         .dashboard-header {
@@ -112,6 +156,24 @@ const Dashboard = () => {
           padding: 0 2rem;
         }
 
+        .header-badge-row {
+          margin-bottom: 0.75rem;
+        }
+
+        .demo-header-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(8px);
+          color: white;
+          font-weight: 700;
+          font-size: 0.85rem;
+          padding: 0.35rem 0.85rem;
+          border-radius: 9999px;
+          border: 1px solid rgba(255, 255, 255, 0.35);
+        }
+
         .welcome-title {
           font-size: 2.5rem;
           font-weight: 700;
@@ -120,11 +182,95 @@ const Dashboard = () => {
 
         .welcome-subtitle {
           font-size: 1.125rem;
-          opacity: 0.9;
+          opacity: 0.95;
         }
 
         .dashboard-content {
-          padding: 3rem 2rem;
+          padding: 2.5rem 2rem 4rem;
+        }
+
+        .demo-hero-banner {
+          background: white;
+          border-radius: 16px;
+          padding: 1.75rem 2rem;
+          margin-bottom: 2.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1.5rem;
+          border: 1px solid #e0e7ff;
+          box-shadow: 0 8px 30px rgba(99, 102, 241, 0.08);
+          flex-wrap: wrap;
+        }
+
+        .demo-banner-content {
+          flex: 1;
+          min-width: 280px;
+        }
+
+        .demo-banner-header {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .demo-icon-box {
+          width: 52px;
+          height: 52px;
+          border-radius: 12px;
+          background: #eef2ff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .demo-banner-title {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #1e1b4b;
+          margin-bottom: 0.25rem;
+        }
+
+        .demo-banner-text {
+          font-size: 0.95rem;
+          color: #4b5563;
+        }
+
+        .demo-banner-chips {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+          margin-top: 0.75rem;
+        }
+
+        .demo-chip {
+          background: #f1f5f9;
+          color: #334155;
+          font-size: 0.8rem;
+          font-weight: 600;
+          padding: 0.25rem 0.65rem;
+          border-radius: 6px;
+          border: 1px solid #e2e8f0;
+        }
+
+        .demo-signup-cta {
+          background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+          color: white;
+          font-weight: 600;
+          padding: 0.85rem 1.5rem;
+          border-radius: 10px;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+          transition: all 0.2s ease;
+        }
+
+        .demo-signup-cta:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
         }
 
         .modules-grid {
@@ -137,11 +283,12 @@ const Dashboard = () => {
           cursor: pointer;
           transition: transform 0.3s ease, box-shadow 0.3s ease;
           border: 1px solid #e8ecf1;
+          border-radius: 14px;
         }
 
         .module-card:hover {
           transform: translateY(-8px);
-          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
         }
 
         .module-content {
@@ -180,11 +327,17 @@ const Dashboard = () => {
           border: none;
           padding: 0.75rem;
           font-weight: 600;
+          border-radius: 8px;
         }
 
         @media (max-width: 768px) {
           .welcome-title {
             font-size: 1.75rem;
+          }
+
+          .demo-hero-banner {
+            flex-direction: column;
+            align-items: flex-start;
           }
 
           .modules-grid {

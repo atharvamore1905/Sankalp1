@@ -56,6 +56,15 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
+  const guestLogin = async () => {
+    const res = await axios.post(`${API}/auth/guest`, {}, { withCredentials: true });
+    if (res.data?.token) {
+      localStorage.setItem('sankalp_token', res.data.token);
+    }
+    setUser(res.data.user);
+    return res.data;
+  };
+
   const logout = async () => {
     try {
       await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
@@ -67,7 +76,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, checkAuth }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, guestLogin, logout, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );

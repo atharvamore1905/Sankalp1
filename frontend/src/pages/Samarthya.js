@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Target, Plus, X } from "lucide-react";
+import { Target, Plus, X, Sparkles, UserCheck, BookOpen, Award, Briefcase } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,15 +11,18 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
 
 const Samarthya = () => {
+  const { user } = useAuth();
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [availableSkills, setAvailableSkills] = useState([]);
   const [newSkill, setNewSkill] = useState("");
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
     fetchSkills();
-  }, []);
+    fetchProfile();
+  }, [user]);
 
   const fetchSkills = async () => {
     try {
@@ -27,6 +31,27 @@ const Samarthya = () => {
     } catch (error) {
       console.error("Error fetching skills:", error);
     }
+  };
+
+  const fetchProfile = async () => {
+    try {
+      const res = await axios.get(`${API}/samarthya/profile`, { withCredentials: true });
+      if (res.data?.profile) {
+        setProfile(res.data.profile);
+        // Preload skills if user has them and none currently selected
+        if (res.data.profile.skills && res.data.profile.skills.length > 0) {
+          setSelectedSkills(prev => prev.length === 0 ? res.data.profile.skills : prev);
+        }
+      }
+    } catch (error) {
+      // In guest or fresh user mode, fallback cleanly if not signed in
+      console.log("Profile lookup info:", error.message);
+    }
+  };
+
+  const loadDemoSkills = () => {
+    const demoSkills = profile?.skills || ["Python", "SQL", "Machine Learning", "Data Visualization", "Git"];
+    setSelectedSkills(demoSkills);
   };
 
   const addSkill = (skill) => {
@@ -59,16 +84,69 @@ const Samarthya = () => {
         <div className="container">
           <Target size={48} />
           <h1 className="page-title" data-testid="page-title">SAMARTHYA</h1>
-          <p className="page-subtitle">Skills-to-Jobs Mapping</p>
+          <p className="page-subtitle">Skills-to-Jobs Mapping & Career Readiness</p>
         </div>
       </div>
 
       <div className="container">
+        {/* Guest Demo Profile Card */}
+        {user?.is_guest && profile && (
+          <div className="demo-candidate-card" data-testid="demo-profile-banner">
+            <div className="candidate-card-header">
+              <div className="candidate-badge-row">
+                <span className="demo-pill">
+                  <Sparkles size={14} /> Fictional Demo Candidate
+                </span>
+                <span className="demo-session-pill">Isolated Sandbox</span>
+              </div>
+              <h2 className="candidate-name">{profile.name}</h2>
+              <p className="candidate-sub">
+                {profile.education?.degree} ({profile.education?.year}) • {profile.education?.institution}
+              </p>
+            </div>
+
+            <div className="candidate-stats-grid">
+              <div className="candidate-stat">
+                <span className="stat-label">CGPA</span>
+                <span className="stat-val">{profile.education?.cgpa} / 10</span>
+              </div>
+              <div className="candidate-stat">
+                <span className="stat-label">10th / 12th</span>
+                <span className="stat-val">{profile.education?.marks_10th}% / {profile.education?.marks_12th}%</span>
+              </div>
+              <div className="candidate-stat">
+                <span className="stat-label">Target Domain</span>
+                <span className="stat-val">{profile.target_domain}</span>
+              </div>
+              <div className="candidate-stat">
+                <span className="stat-label">Location</span>
+                <span className="stat-val">{profile.location}</span>
+              </div>
+            </div>
+
+            <div className="candidate-footer">
+              <div className="quick-btn-wrap">
+                <Button 
+                  onClick={loadDemoSkills}
+                  variant="outline"
+                  className="load-demo-skills-btn"
+                  data-testid="btn-load-demo-skills"
+                >
+                  <Sparkles size={16} /> Load Aarav's Skills ({profile.skills?.length || 5})
+                </Button>
+              </div>
+              <p className="demo-note">
+                This candidate profile is demonstration data. Any skill additions or edits are kept in your isolated session.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="content-grid">
           <Card className="skills-card">
             <CardContent className="card-content">
               <h2>Your Skills</h2>
-              <p className="subtitle">Add skills you already have</p>
+              <p className="subtitle">Add skills you have or want to test</p>
               
               <div className="skill-input-section">
                 <Select onValueChange={addSkill} value={newSkill}>
@@ -118,7 +196,7 @@ const Samarthya = () => {
                 className="match-btn"
                 data-testid="btn-match"
               >
-                {loading ? 'Matching...' : 'Find Matching Jobs'}
+                {loading ? 'Matching...' : `Find Matching Jobs (${selectedSkills.length} Skills)`}
               </Button>
             </CardContent>
           </Card>
@@ -190,6 +268,7 @@ const Samarthya = () => {
         .samarthya-page {
           min-height: 100vh;
           padding-bottom: 3rem;
+          background: #f8fafc;
         }
 
         .page-header {
@@ -214,6 +293,112 @@ const Samarthya = () => {
           max-width: 1400px;
           margin: 0 auto;
           padding: 2rem;
+        }
+
+        .demo-candidate-card {
+          background: white;
+          border-radius: 14px;
+          padding: 1.5rem 2rem;
+          margin-bottom: 2rem;
+          border: 1px solid #fed7aa;
+          box-shadow: 0 4px 20px rgba(249, 115, 22, 0.08);
+        }
+
+        .candidate-badge-row {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .demo-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          background: #ffedd5;
+          color: #c2410c;
+          font-size: 0.78rem;
+          font-weight: 700;
+          padding: 0.25rem 0.65rem;
+          border-radius: 9999px;
+        }
+
+        .demo-session-pill {
+          background: #f1f5f9;
+          color: #475569;
+          font-size: 0.78rem;
+          font-weight: 600;
+          padding: 0.25rem 0.65rem;
+          border-radius: 9999px;
+        }
+
+        .candidate-name {
+          font-size: 1.35rem;
+          font-weight: 700;
+          color: #1e293b;
+          margin-bottom: 0.2rem;
+        }
+
+        .candidate-sub {
+          color: #64748b;
+          font-size: 0.92rem;
+        }
+
+        .candidate-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+          gap: 1rem;
+          margin: 1.25rem 0;
+          padding: 1rem;
+          background: #f8fafc;
+          border-radius: 10px;
+          border: 1px solid #e2e8f0;
+        }
+
+        .candidate-stat {
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+        }
+
+        .stat-label {
+          font-size: 0.78rem;
+          color: #64748b;
+          text-transform: uppercase;
+          font-weight: 600;
+        }
+
+        .stat-val {
+          font-size: 1rem;
+          font-weight: 700;
+          color: #0f172a;
+        }
+
+        .candidate-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+
+        .load-demo-skills-btn {
+          border-color: #f97316;
+          color: #ea580c;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .load-demo-skills-btn:hover {
+          background: #fff7ed;
+          color: #c2410c;
+        }
+
+        .demo-note {
+          font-size: 0.82rem;
+          color: #64748b;
+          font-style: italic;
         }
 
         .content-grid {
@@ -396,6 +581,23 @@ const Samarthya = () => {
           display: flex;
           flex-wrap: wrap;
           gap: 0.5rem;
+        }
+
+        .badge {
+          padding: 0.35rem 0.75rem;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 500;
+        }
+
+        .badge-success {
+          background: #dcfce7;
+          color: #15803d;
+        }
+
+        .badge-warning {
+          background: #fef3c7;
+          color: #b45309;
         }
 
         .gap-note {

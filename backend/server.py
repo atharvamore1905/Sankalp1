@@ -12,7 +12,7 @@ from collections import Counter
 import json
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 import uuid
 from datetime import datetime, timezone, timedelta
 import httpx
@@ -46,6 +46,7 @@ from scoring import (
 )
 from ingestion import IngestionPipeline, CuratedPublicFeedAdapter, ManualUploadAdapter
 from migration import run_data_migration
+from demo import SAMPLE_DEMO_PROFILE, SAMPLE_DEMO_GOALS, DemoSessionManager
 load_dotenv(ROOT_DIR / '.env')
 
 logging.basicConfig(
@@ -150,6 +151,8 @@ async def get_current_admin(
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("is_guest", False) or str(payload.get("sub", "")).startswith("guest_"):
+            raise HTTPException(status_code=403, detail="Demo/guest users are strictly forbidden from administrator access.")
         is_admin: bool = payload.get("is_admin", False)
         admin_email: str = payload.get("email")
         if not is_admin or admin_email != "Admin123@gmail.com":
@@ -279,6 +282,8 @@ async def health_check():
             
     return {
         "status": "ok",
+        "demo_mode_enabled": True,
+        "grok_configured": bool(os.environ.get("GROK_API_KEY") or os.environ.get("XAI_API_KEY")),
         "gemini_configured": bool(os.environ.get("GEMINI_API_KEY")),
         "mongo_configured": bool(os.environ.get("MONGO_URL") or os.environ.get("LOCAL_DEV")),
         "database_connected": db_connected,
@@ -352,16 +357,73 @@ async def login(login_data: LoginRequest, response: Response):
     
     return {
         "message": "Login successful",
-        "user": {"id": user["id"], "name": user["name"], "email": user["email"], "phone_no": user["phone_no"]},
+        "user": {"id": user["id"], "name": user["name"], "email": user["email"], "phone_no": user["phone_no"], "is_guest": False},
         "token": access_token
+    }
+
+@api_router.post("/auth/guest")
+async def guest_login(response: Response):
+    """
+    Initialize an isolated guest demonstration session.
+    Grants demo access across all 6 Sankalp modules with isolated state.
+    Strictly denies admin functions and private user record access.
+    """
+    session = DemoSessionManager.create_session()
+    sid = session["session_id"]
+    if db is not None:
+        await DemoSessionManager.save_session(session, db)
+    
+    access_token = create_access_token(data={
+        "sub": sid,
+        "is_guest": True,
+        "role": "guest"
+    })
+    
+    response.set_cookie(
+        key="sankalp_token",
+        value=access_token,
+        httponly=True,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        samesite="lax",
+        secure=True
+    )
+    
+    return {
+        "message": "Demo Mode initialized. Welcome to Project Sankalp!",
+        "token": access_token,
+        "user": {
+            "id": sid,
+            "name": session["name"],
+            "email": session["email"],
+            "phone_no": session["phone_no"],
+            "is_guest": True,
+            "role": "guest",
+            "profile": session["profile"]
+        }
     }
 
 @api_router.get("/auth/me")
 async def get_me(user_id: str = Depends(get_current_user)):
+    if user_id.startswith("guest_"):
+        session = await DemoSessionManager.get_session(user_id, db)
+        if not session:
+            session = DemoSessionManager.create_session(session_id=user_id)
+        return {
+            "user": {
+                "id": session["session_id"],
+                "name": session["name"],
+                "email": session["email"],
+                "phone_no": session["phone_no"],
+                "is_guest": True,
+                "role": "guest",
+                "profile": session.get("profile")
+            }
+        }
     check_db()
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    user["is_guest"] = False
     return {"user": user}
 
 @api_router.post("/auth/logout")
@@ -506,6 +568,38 @@ async def generate_career_recommendation(req: CareerRecommendationRequest):
 async def generate_roadmap(req: CareerRecommendationRequest):
     return await generate_four_stage_roadmap(domain=req.domain)
 
+async def call_grok_api(user_message: str, system_instruction: str) -> Optional[str]:
+    """Call official xAI Grok API via chat completions REST endpoint."""
+    grok_key = os.environ.get("GROK_API_KEY") or os.environ.get("XAI_API_KEY")
+    if not grok_key:
+        return None
+    try:
+        url = "https://api.x.ai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {grok_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": "grok-2-latest",
+            "messages": [
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": user_message}
+            ],
+            "temperature": 0.7
+        }
+        async with httpx.AsyncClient(timeout=15.0) as http_client:
+            resp = await http_client.post(url, headers=headers, json=payload)
+            if resp.status_code == 200:
+                data = resp.json()
+                choices = data.get("choices", [])
+                if choices and "message" in choices[0] and "content" in choices[0]["message"]:
+                    return choices[0]["message"]["content"]
+            else:
+                logger.warning(f"Grok API returned status {resp.status_code}: {resp.text[:200]}")
+    except Exception as e:
+        logger.warning(f"Grok API request error: {e}")
+    return None
+
 async def call_gemini_api(user_message: str, system_instruction: str) -> Optional[str]:
     """Call Google Gemini API via official SDK or direct HTTP REST API."""
     gemini_key = os.environ.get("GEMINI_API_KEY")
@@ -549,6 +643,36 @@ async def call_gemini_api(user_message: str, system_instruction: str) -> Optiona
         logger.warning(f"Gemini HTTP request error: {http_err}")
 
     return None
+
+async def call_ai_counselor(user_message: str, system_instruction: str) -> Tuple[str, str]:
+    """
+    Intelligent AI counselor prioritizing Grok API, then Gemini API,
+    and cleanly falling back to Sankalp catalog intelligence if no key is configured.
+    Returns (response_text, provider_name).
+    """
+    # 1. Try Grok if configured
+    grok_response = await call_grok_api(user_message, system_instruction)
+    if grok_response:
+        return grok_response, "Grok (xAI)"
+
+    # 2. Try Gemini if configured
+    gemini_response = await call_gemini_api(user_message, system_instruction)
+    if gemini_response:
+        return gemini_response, "Google Gemini"
+
+    # 3. Transparent, safe dataset fallback
+    fallback_text = await generate_margadarshak_fallback_response(user_message)
+    grok_configured = bool(os.environ.get("GROK_API_KEY") or os.environ.get("XAI_API_KEY"))
+    gemini_configured = bool(os.environ.get("GEMINI_API_KEY"))
+    
+    if not grok_configured and not gemini_configured:
+        notice = "\n\n*(Notice: GROK_API_KEY is not configured on this server. Displaying deterministic counselor response based on Sankalp's database catalog.)*"
+        fallback_text += notice
+        provider = "Curated Catalog (Grok API Key Not Configured)"
+    else:
+        provider = "Curated Catalog Fallback"
+
+    return fallback_text, provider
 
 async def generate_margadarshak_fallback_response(user_message: str) -> str:
     """Intelligent fallback querying MongoDB jobs and courses when Gemini API is unavailable."""
@@ -608,7 +732,46 @@ async def generate_margadarshak_fallback_response(user_message: str) -> str:
 {paths_str}"""
 
 @api_router.post("/margadarshak/chat")
-async def margadarshak_chat(req: MessageRequest):
+async def margadarshak_chat(
+    req: MessageRequest,
+    authorization: Optional[str] = Cookie(None, alias="sankalp_token"),
+    auth_header: Optional[str] = Header(None, alias="Authorization")
+):
+    token = authorization
+    if not token and auth_header:
+        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else auth_header.strip()
+    
+    is_guest = False
+    guest_sid = None
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            is_guest = payload.get("is_guest", False) or str(payload.get("sub", "")).startswith("guest_")
+            guest_sid = payload.get("sub")
+        except Exception:
+            pass
+
+    # Check guest session rate limit (max 5 requests)
+    if is_guest and guest_sid:
+        session = await DemoSessionManager.get_session(guest_sid, db)
+        if session:
+            current_count = session.get("chat_count", 0)
+            if current_count >= 5:
+                return {
+                    "response": (
+                        "**Demo Mode AI Request Limit Reached (5/5 queries used).**\n\n"
+                        "You have reached the maximum allowed AI counselor requests for this guest session to prevent API abuse.\n\n"
+                        "To continue asking unlimited career questions and save your custom roadmaps, please create a free Sankalp account!"
+                    ),
+                    "session_id": req.session_id,
+                    "provider": "Demo Limit Reached",
+                    "chat_count": current_count,
+                    "limit_reached": True,
+                    "is_demo": True
+                }
+            session["chat_count"] = current_count + 1
+            await DemoSessionManager.save_session(session, db)
+
     jobs = await fetch_jobs_from_db(include_unpublished=False)
     courses = await fetch_courses_from_db(include_unpublished=False)
     skills = await fetch_skills_from_db(include_unpublished=False)
@@ -640,9 +803,7 @@ FORMAT EXAMPLE:
 
 Keep it brief, clear, and actionable!"""
         
-        response = await call_gemini_api(req.message, system_message)
-        if not response:
-            response = await generate_margadarshak_fallback_response(req.message)
+        response, provider = await call_ai_counselor(req.message, system_message)
         
         if db is not None:
             try:
@@ -650,27 +811,71 @@ Keep it brief, clear, and actionable!"""
                     "session_id": req.session_id,
                     "user_message": req.message,
                     "ai_response": response,
+                    "provider": provider,
+                    "is_demo": is_guest,
                     "timestamp": utc_now().isoformat()
                 }
                 await db.margadarshak_chats.insert_one(chat_doc)
             except Exception as dbe:
                 logger.warning(f"Could not store chat in DB: {dbe}")
         
-        return {"response": response, "session_id": req.session_id}
+        return {
+            "response": response,
+            "session_id": req.session_id,
+            "provider": provider,
+            "is_demo": is_guest
+        }
     except Exception as e:
         logger.error(f"Chat error: {str(e)}")
         fallback = await generate_margadarshak_fallback_response(req.message)
-        return {"response": fallback, "session_id": req.session_id}
+        return {
+            "response": fallback,
+            "session_id": req.session_id,
+            "provider": "Curated Fallback Error Handler",
+            "is_demo": is_guest
+        }
 
 
 # ============= SAMARTHYA (SKILLS-TO-JOBS MAPPING) =============
-@api_router.post("/samarthya/profile")
-async def create_profile(profile: UserProfile):
+@api_router.get("/samarthya/profile")
+async def get_samarthya_profile(user_id: str = Depends(get_current_user)):
+    if user_id.startswith("guest_"):
+        session = await DemoSessionManager.get_session(user_id, db)
+        profile = session.get("profile") if session else dict(SAMPLE_DEMO_PROFILE)
+        return {"profile": profile, "is_demo": True}
+    
     check_db()
-    profile_dict = profile.model_dump()
-    profile_dict['created_at'] = profile_dict['created_at'].isoformat()
-    await db.user_profiles.insert_one(profile_dict)
-    return {"message": "Profile created", "user_id": profile.user_id}
+    profile = await db.user_profiles.find_one({"user_id": user_id}, {"_id": 0})
+    if not profile:
+        profile = {
+            "user_id": user_id,
+            "name": "Student Profile",
+            "skills": [],
+            "education": None,
+            "certifications": [],
+            "projects": [],
+            "is_demo_profile": False
+        }
+    return {"profile": profile, "is_demo": False}
+
+@api_router.post("/samarthya/profile")
+async def update_samarthya_profile(profile_data: dict, current_user: str = Depends(get_current_user)):
+    if current_user.startswith("guest_"):
+        session = await DemoSessionManager.get_session(current_user, db)
+        if session:
+            session["profile"].update(profile_data)
+            await DemoSessionManager.save_session(session, db)
+        return {"message": "Demo profile updated (temporary demo session)", "user_id": current_user, "is_demo": True}
+    
+    check_db()
+    profile_data["user_id"] = current_user
+    profile_data["updated_at"] = utc_now().isoformat()
+    await db.user_profiles.update_one(
+        {"user_id": current_user},
+        {"$set": profile_data},
+        upsert=True
+    )
+    return {"message": "Profile updated successfully", "user_id": current_user, "is_demo": False}
 
 @api_router.post("/samarthya/match")
 async def match_skills_to_jobs(user_skills: List[str]):
@@ -767,10 +972,13 @@ async def get_salary_trends():
 # ============= UNNATI (PROGRESS TRACKER & ROADMAP MANAGEMENT) =============
 @api_router.get("/unnati/{user_id}")
 async def get_progress(user_id: str, current_user: str = Depends(get_current_user)):
-    check_db()
     if user_id != current_user:
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=403, detail="Access denied: Cannot access another user's progress")
     
+    if user_id.startswith("guest_"):
+        return await DemoSessionManager.get_progress(user_id, db)
+
+    check_db()
     items = await db.progress_items.find({"user_id": user_id}, {"_id": 0}).to_list(1000)
     
     total_items = len(items)
@@ -797,15 +1005,24 @@ async def get_progress(user_id: str, current_user: str = Depends(get_current_use
             "not_started": not_started,
             "completion_rate": round((completed / total_items * 100) if total_items > 0 else 0, 1)
         },
-        "upcoming_deadlines": upcoming[:5]
+        "upcoming_deadlines": upcoming[:5],
+        "is_demo_mode": False
     }
 
 @api_router.post("/unnati/{user_id}/update")
 async def update_progress(user_id: str, update_data: UpdateProgressRequest, current_user: str = Depends(get_current_user)):
-    check_db()
     if user_id != current_user:
         raise HTTPException(status_code=403, detail="Access denied")
     
+    if user_id.startswith("guest_"):
+        success = await DemoSessionManager.update_progress(
+            user_id, update_data.item_id, update_data.status, update_data.percent_complete, db
+        )
+        if not success:
+            raise HTTPException(status_code=404, detail="Demo progress item not found")
+        return {"message": "Demo progress updated successfully (temporary session)", "is_demo": True}
+
+    check_db()
     item = await db.progress_items.find_one({"id": update_data.item_id, "user_id": user_id})
     if not item:
         raise HTTPException(status_code=404, detail="Progress item not found")
@@ -828,10 +1045,14 @@ async def update_progress(user_id: str, update_data: UpdateProgressRequest, curr
 
 @api_router.post("/unnati/{user_id}/import-roadmap")
 async def import_roadmap(user_id: str, import_data: ImportRoadmapRequest, current_user: str = Depends(get_current_user)):
-    check_db()
     if user_id != current_user:
         raise HTTPException(status_code=403, detail="Access denied")
     
+    if user_id.startswith("guest_"):
+        count = await DemoSessionManager.import_roadmap(user_id, import_data.roadmap, db)
+        return {"message": f"Imported {count} items into Demo Progress Tracker", "count": count, "is_demo": True}
+
+    check_db()
     roadmap = import_data.roadmap
     items_to_insert = []
     
@@ -893,10 +1114,13 @@ async def import_roadmap(user_id: str, import_data: ImportRoadmapRequest, curren
 
 @api_router.post("/unnati/{user_id}/add-goal")
 async def add_custom_goal(user_id: str, goal_data: CreateGoalRequest, current_user: str = Depends(get_current_user)):
-    check_db()
     if user_id != current_user:
         raise HTTPException(status_code=403, detail="Access denied")
     
+    if user_id.startswith("guest_"):
+        return await DemoSessionManager.add_goal(user_id, goal_data.model_dump(), db)
+
+    check_db()
     goal_doc = {
         "id": str(uuid.uuid4()),
         "user_id": user_id,
@@ -916,10 +1140,24 @@ async def add_custom_goal(user_id: str, goal_data: CreateGoalRequest, current_us
 
 @api_router.post("/unnati/{user_id}/update-goal")
 async def update_custom_goal(user_id: str, goal_id: str, goal_data: CreateGoalRequest, current_user: str = Depends(get_current_user)):
-    check_db()
     if user_id != current_user:
         raise HTTPException(status_code=403, detail="Access denied")
     
+    if user_id.startswith("guest_"):
+        session = await DemoSessionManager.get_session(user_id, db)
+        if session:
+            for item in session.get("progress_items", []):
+                if item.get("id") == goal_id:
+                    item["title"] = goal_data.title
+                    item["description"] = goal_data.description
+                    item["start_date"] = goal_data.start_date.isoformat() if goal_data.start_date else None
+                    item["due_date"] = goal_data.due_date.isoformat() if goal_data.due_date else None
+                    item["updated_at"] = utc_now().isoformat()
+                    await DemoSessionManager.save_session(session, db)
+                    return {"message": "Demo goal updated successfully", "is_demo": True}
+        raise HTTPException(status_code=404, detail="Demo goal not found")
+
+    check_db()
     update_fields = {
         "title": goal_data.title,
         "description": goal_data.description,
@@ -937,10 +1175,16 @@ async def update_custom_goal(user_id: str, goal_id: str, goal_data: CreateGoalRe
 
 @api_router.delete("/unnati/{user_id}/delete-goal/{goal_id}")
 async def delete_custom_goal(user_id: str, goal_id: str, current_user: str = Depends(get_current_user)):
-    check_db()
     if user_id != current_user:
         raise HTTPException(status_code=403, detail="Access denied")
     
+    if user_id.startswith("guest_"):
+        success = await DemoSessionManager.delete_goal(user_id, goal_id, db)
+        if not success:
+            raise HTTPException(status_code=404, detail="Demo goal not found")
+        return {"message": "Demo goal deleted successfully (temporary demo session)", "is_demo": True}
+
+    check_db()
     result = await db.progress_items.delete_one({"id": goal_id, "user_id": user_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Goal not found")
@@ -961,7 +1205,29 @@ async def get_community_posts(type: Optional[str] = None):
         return {"posts": [], "total": 0}
 
 @api_router.post("/sahyog/posts")
-async def create_community_post(post: CommunityPost):
+async def create_community_post(
+    post: CommunityPost,
+    authorization: Optional[str] = Cookie(None, alias="sankalp_token"),
+    auth_header: Optional[str] = Header(None, alias="Authorization")
+):
+    token = authorization
+    if not token and auth_header:
+        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else auth_header.strip()
+    is_guest = False
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            is_guest = payload.get("is_guest", False) or str(payload.get("sub", "")).startswith("guest_")
+        except Exception:
+            pass
+
+    if is_guest:
+        return {
+            "message": "Demo post created successfully! (Simulated in Demo Mode)",
+            "post_id": f"demo-post-{uuid.uuid4().hex[:8]}",
+            "is_demo": True
+        }
+
     check_db()
     post_dict = post.model_dump()
     post_dict['created_at'] = post_dict['created_at'].isoformat()
@@ -969,7 +1235,29 @@ async def create_community_post(post: CommunityPost):
     return {"message": "Post created", "post_id": post.post_id}
 
 @api_router.post("/sahyog/mentor-request")
-async def create_mentor_request(request: MentorRequest):
+async def create_mentor_request(
+    request: MentorRequest,
+    authorization: Optional[str] = Cookie(None, alias="sankalp_token"),
+    auth_header: Optional[str] = Header(None, alias="Authorization")
+):
+    token = authorization
+    if not token and auth_header:
+        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else auth_header.strip()
+    is_guest = False
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            is_guest = payload.get("is_guest", False) or str(payload.get("sub", "")).startswith("guest_")
+        except Exception:
+            pass
+
+    if is_guest:
+        return {
+            "message": "Mentor collaboration request submitted! (Simulated in Demo Mode - mentors receive emails in full mode)",
+            "request_id": f"demo-req-{uuid.uuid4().hex[:8]}",
+            "is_demo": True
+        }
+
     check_db()
     request_dict = request.model_dump()
     request_dict['created_at'] = request_dict['created_at'].isoformat()

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-import { Brain, Send, Loader, Download } from "lucide-react";
+import { Brain, Send, Loader, Download, Sparkles, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,20 @@ const Margadarshak = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleFillDemoData = () => {
+    setFormData({
+      marks_10th: "88",
+      marks_12th: "84",
+      gpa: "8.2",
+      backlogs: "0",
+      domain: "Data Science & Machine Learning",
+      budget: "50000",
+      time_availability: "6 months",
+      future_goals: "Aspiring AI/ML Engineer aiming to build real-world intelligent systems and scalable pipelines."
+    });
+    toast.success("Loaded Aarav Sharma's sample academic profile!");
+  };
+
   const handleRecommendation = async () => {
     setLoading(true);
     try {
@@ -58,6 +72,7 @@ const Margadarshak = () => {
       setActiveTab("results");
     } catch (error) {
       console.error("Error getting recommendations:", error);
+      toast.error("Failed to generate recommendations. Please check inputs.");
     }
     setLoading(false);
   };
@@ -79,6 +94,7 @@ const Margadarshak = () => {
       setActiveTab("roadmap");
     } catch (error) {
       console.error("Error getting roadmap:", error);
+      toast.error("Failed to generate roadmap. Please check inputs.");
     }
     setLoading(false);
   };
@@ -87,17 +103,27 @@ const Margadarshak = () => {
     if (!chatInput.trim()) return;
     
     const userMessage = { role: "user", content: chatInput };
-    setChatMessages([...chatMessages, userMessage]);
+    setChatMessages(prev => [...prev, userMessage]);
+    const currentInput = chatInput;
     setChatInput("");
     setChatLoading(true);
     
     try {
-      const res = await axios.post(`${API}/margadarshak/chat`, {
-        message: chatInput,
-        session_id: sessionId
-      });
+      const res = await axios.post(
+        `${API}/margadarshak/chat`,
+        {
+          message: currentInput,
+          session_id: sessionId
+        },
+        { withCredentials: true }
+      );
       
-      const aiMessage = { role: "assistant", content: res.data.response };
+      const aiMessage = { 
+        role: "assistant", 
+        content: res.data.response,
+        provider: res.data.provider,
+        limit_reached: res.data.limit_reached
+      };
       setChatMessages(prev => [...prev, aiMessage]);
     } catch (error) {
       console.error("Error in chat:", error);
@@ -131,7 +157,7 @@ const Margadarshak = () => {
         <div className="container">
           <Brain size={48} />
           <h1 className="page-title" data-testid="page-title">MARGADARSHAK</h1>
-          <p className="page-subtitle">AI-Powered Career Path Generator</p>
+          <p className="page-subtitle">AI-Powered Career Path Generator & Counselor</p>
         </div>
       </div>
 
@@ -139,7 +165,7 @@ const Margadarshak = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="tabs-container">
           <TabsList className="tabs-list" data-testid="margadarshak-tabs">
             <TabsTrigger value="form" data-testid="tab-form">Career Form</TabsTrigger>
-            <TabsTrigger value="chat" data-testid="tab-chat">AI Chat</TabsTrigger>
+            <TabsTrigger value="chat" data-testid="tab-chat">AI Counselor</TabsTrigger>
             <TabsTrigger value="results" disabled={!recommendations} data-testid="tab-results">Recommendations</TabsTrigger>
             <TabsTrigger value="roadmap" disabled={!roadmap} data-testid="tab-roadmap">Roadmap</TabsTrigger>
           </TabsList>
@@ -147,7 +173,22 @@ const Margadarshak = () => {
           <TabsContent value="form" data-testid="form-content">
             <Card>
               <CardContent className="form-content">
-                <h2>Tell Us About Yourself</h2>
+                <div className="form-top-row">
+                  <div>
+                    <h2>Tell Us About Yourself</h2>
+                    <p className="subtitle">Enter your academic marks and career preferences for deterministic scoring</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleFillDemoData}
+                    className="demo-fill-btn"
+                    data-testid="btn-fill-demo-data"
+                  >
+                    <Sparkles size={16} /> Fill Demo Profile (Aarav Sharma)
+                  </Button>
+                </div>
+
                 <div className="form-grid">
                   <div className="form-group">
                     <Label htmlFor="marks_10th">10th Marks (%)</Label>
@@ -155,6 +196,7 @@ const Margadarshak = () => {
                       id="marks_10th"
                       name="marks_10th"
                       type="number"
+                      placeholder="e.g. 88"
                       value={formData.marks_10th}
                       onChange={handleInputChange}
                       data-testid="input-marks-10th"
@@ -166,51 +208,55 @@ const Margadarshak = () => {
                       id="marks_12th"
                       name="marks_12th"
                       type="number"
+                      placeholder="e.g. 84"
                       value={formData.marks_12th}
                       onChange={handleInputChange}
                       data-testid="input-marks-12th"
                     />
                   </div>
                   <div className="form-group">
-                    <Label htmlFor="gpa">GPA / CGPA</Label>
+                    <Label htmlFor="gpa">GPA / CGPA (out of 10)</Label>
                     <Input
                       id="gpa"
                       name="gpa"
                       type="number"
                       step="0.1"
+                      placeholder="e.g. 8.2"
                       value={formData.gpa}
                       onChange={handleInputChange}
                       data-testid="input-gpa"
                     />
                   </div>
                   <div className="form-group">
-                    <Label htmlFor="backlogs">Backlogs</Label>
+                    <Label htmlFor="backlogs">Active Backlogs</Label>
                     <Input
                       id="backlogs"
                       name="backlogs"
                       type="number"
+                      placeholder="0"
                       value={formData.backlogs}
                       onChange={handleInputChange}
                       data-testid="input-backlogs"
                     />
                   </div>
                   <div className="form-group full-width">
-                    <Label htmlFor="domain">Preferred Domain</Label>
+                    <Label htmlFor="domain">Preferred Domain / Field</Label>
                     <Input
                       id="domain"
                       name="domain"
-                      placeholder="e.g., Data Science, Web Development, AI"
+                      placeholder="e.g., Data Science, Web Development, Cloud Computing"
                       value={formData.domain}
                       onChange={handleInputChange}
                       data-testid="input-domain"
                     />
                   </div>
                   <div className="form-group">
-                    <Label htmlFor="budget">Budget (₹)</Label>
+                    <Label htmlFor="budget">Upskilling Budget (₹)</Label>
                     <Input
                       id="budget"
                       name="budget"
                       type="number"
+                      placeholder="e.g. 50000"
                       value={formData.budget}
                       onChange={handleInputChange}
                       data-testid="input-budget"
@@ -228,11 +274,11 @@ const Margadarshak = () => {
                     />
                   </div>
                   <div className="form-group full-width">
-                    <Label htmlFor="future_goals">Future Goals</Label>
+                    <Label htmlFor="future_goals">Future Aspirations & Interests</Label>
                     <Textarea
                       id="future_goals"
                       name="future_goals"
-                      placeholder="Describe your career aspirations..."
+                      placeholder="Describe your career goals, target companies or roles..."
                       value={formData.future_goals}
                       onChange={handleInputChange}
                       data-testid="input-goals"
@@ -254,22 +300,35 @@ const Margadarshak = () => {
           <TabsContent value="chat" data-testid="chat-content">
             <Card className="chat-card">
               <CardContent className="chat-container">
+                {user?.is_guest && (
+                  <div className="chat-sandbox-notice" data-testid="chat-sandbox-notice">
+                    <Sparkles size={14} />
+                    <span>Demo Mode AI Counselor • Powered by Grok (xAI) / Google Gemini • Limit: 5 questions/session</span>
+                  </div>
+                )}
                 <div className="chat-messages" data-testid="chat-messages">
                   {chatMessages.length === 0 && (
                     <div className="chat-welcome">
                       <Brain size={48} />
-                      <h3>Hi! I'm your AI Career Counselor</h3>
-                      <p>Ask me anything about careers, skills, courses, or your future path!</p>
+                      <h3>Hi! I'm your Margdarshak AI Counselor</h3>
+                      <p>Ask about career options, domain requirements, interview preparation, or learning roadmaps!</p>
                     </div>
                   )}
                   {chatMessages.map((msg, idx) => (
                     <div key={idx} className={`chat-message ${msg.role}`} data-testid={`chat-message-${idx}`}>
-                      <div className="message-content">{msg.content}</div>
+                      <div className="message-content">
+                        {msg.content}
+                        {msg.provider && (
+                          <div className="msg-provider-tag">
+                            <span>Source: {msg.provider}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                   {chatLoading && (
                     <div className="chat-message assistant">
-                      <div className="message-content">Thinking...</div>
+                      <div className="message-content">Consulting career intelligence...</div>
                     </div>
                   )}
                 </div>
@@ -278,7 +337,7 @@ const Margadarshak = () => {
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleChat()}
-                    placeholder="Ask me about careers..."
+                    placeholder="Ask Margdarshak anything (e.g. How to break into Data Science?)"
                     data-testid="chat-input"
                   />
                   <Button onClick={handleChat} disabled={chatLoading} data-testid="btn-send-chat">
@@ -331,6 +390,7 @@ const Margadarshak = () => {
                     onClick={handleImportToUnnati} 
                     disabled={importing}
                     data-testid="btn-import-to-unnati"
+                    className="import-unnati-btn"
                   >
                     <Download size={20} />
                     {importing ? 'Importing...' : 'Import to UNNATI'}
@@ -360,8 +420,8 @@ const Margadarshak = () => {
                       <div className="roadmap-section">
                         <h4>Projects</h4>
                         <ul>
-                          {level.projects.map((project, pidx) => (
-                            <li key={pidx}>{project}</li>
+                          {level.projects.map((proj, pidx) => (
+                            <li key={pidx}>{proj}</li>
                           ))}
                         </ul>
                       </div>
@@ -378,10 +438,11 @@ const Margadarshak = () => {
         .margadarshak-page {
           min-height: 100vh;
           padding-bottom: 3rem;
+          background: #f8fafc;
         }
 
         .page-header {
-          background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           color: white;
           padding: 3rem 2rem;
           text-align: center;
@@ -399,25 +460,59 @@ const Margadarshak = () => {
         }
 
         .container {
-          max-width: 1200px;
+          max-width: 1400px;
           margin: 0 auto;
           padding: 2rem;
+        }
+
+        .tabs-container {
+          margin-top: 2rem;
+        }
+
+        .form-top-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          flex-wrap: wrap;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .demo-fill-btn {
+          border-color: #6366f1;
+          color: #4f46e5;
+          font-weight: 600;
+          background: #eef2ff;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          transition: all 0.2s ease;
+        }
+
+        .demo-fill-btn:hover {
+          background: #e0e7ff;
+          color: #3730a3;
+        }
+
+        .subtitle {
+          color: #6b7280;
+          font-size: 0.95rem;
+          margin-top: 0.25rem;
         }
 
         .form-content {
           padding: 2rem;
         }
 
-        .form-content h2 {
-          margin-bottom: 2rem;
-          font-size: 1.75rem;
-        }
-
         .form-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
           gap: 1.5rem;
-          margin-bottom: 2rem;
+          margin-top: 1rem;
+        }
+
+        .full-width {
+          grid-column: 1 / -1;
         }
 
         .form-group {
@@ -426,128 +521,146 @@ const Margadarshak = () => {
           gap: 0.5rem;
         }
 
-        .form-group.full-width {
-          grid-column: 1 / -1;
-        }
-
         .form-actions {
           display: flex;
           gap: 1rem;
+          margin-top: 2rem;
         }
 
         .chat-card {
-          height: 600px;
+          min-height: 500px;
         }
 
         .chat-container {
-          height: 100%;
+          padding: 2rem;
           display: flex;
           flex-direction: column;
-          padding: 0;
+          height: 600px;
+        }
+
+        .chat-sandbox-notice {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: #fef3c7;
+          border: 1px solid #fde68a;
+          color: #92400e;
+          font-size: 0.82rem;
+          font-weight: 600;
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          margin-bottom: 1rem;
         }
 
         .chat-messages {
           flex: 1;
           overflow-y: auto;
-          padding: 2rem;
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          padding-right: 0.5rem;
         }
 
         .chat-welcome {
           text-align: center;
-          padding: 3rem;
+          margin: auto;
           color: #6b7280;
         }
 
-        .chat-welcome h3 {
-          margin: 1rem 0 0.5rem;
-          color: #1a1a2e;
-        }
-
         .chat-message {
-          margin-bottom: 1rem;
           display: flex;
+          max-width: 80%;
         }
 
         .chat-message.user {
-          justify-content: flex-end;
+          margin-left: auto;
         }
 
-        .chat-message .message-content {
-          max-width: 70%;
-          padding: 1rem;
-          border-radius: 12px;
-          line-height: 1.6;
+        .chat-message.assistant {
+          margin-right: auto;
         }
 
         .chat-message.user .message-content {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #667eea;
           color: white;
+          border-radius: 18px 18px 4px 18px;
         }
 
         .chat-message.assistant .message-content {
-          background: #f5f7fa;
+          background: #f1f5f9;
           color: #1a1a2e;
+          border-radius: 18px 18px 18px 4px;
+          white-space: pre-wrap;
+        }
+
+        .message-content {
+          padding: 1rem 1.25rem;
+          font-size: 0.95rem;
+          line-height: 1.5;
+        }
+
+        .msg-provider-tag {
+          margin-top: 0.5rem;
+          font-size: 0.72rem;
+          color: #64748b;
+          font-style: italic;
+          border-top: 1px dashed rgba(0, 0, 0, 0.1);
+          padding-top: 0.35rem;
         }
 
         .chat-input-area {
-          padding: 1.5rem;
-          border-top: 1px solid #e8ecf1;
           display: flex;
-          gap: 1rem;
+          gap: 0.75rem;
+          margin-top: 1rem;
         }
 
-        .results-container, .roadmap-container {
-          padding: 2rem;
-        }
-
-        .results-container h2, .roadmap-container h2 {
-          font-size: 1.75rem;
-          margin-bottom: 1.5rem;
+        .results-container {
+          padding: 2rem 0;
         }
 
         .recommendations-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
           gap: 1.5rem;
+          margin-top: 1.5rem;
         }
 
         .recommendation-card {
-          position: relative;
+          border-left: 4px solid #667eea;
+          transition: transform 0.2s ease;
+        }
+
+        .recommendation-card:hover {
+          transform: translateY(-4px);
         }
 
         .match-score {
-          position: absolute;
-          top: 1rem;
-          right: 1rem;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          display: inline-block;
+          background: #667eea;
           color: white;
-          padding: 0.5rem 1rem;
+          padding: 0.25rem 0.75rem;
           border-radius: 50px;
-          font-weight: 700;
           font-size: 0.875rem;
-        }
-
-        .recommendation-card h3 {
-          margin-top: 2rem;
-          font-size: 1.25rem;
-          margin-bottom: 0.5rem;
+          font-weight: 600;
+          margin-bottom: 0.75rem;
         }
 
         .category {
           color: #6b7280;
-          margin-bottom: 1rem;
+          font-size: 0.875rem;
+          margin-bottom: 0.75rem;
         }
 
         .job-info {
           display: flex;
           justify-content: space-between;
-          margin: 1rem 0;
+          font-size: 0.875rem;
           font-weight: 600;
+          margin-bottom: 1rem;
         }
 
-        .demand.high {
-          color: #10b981;
-        }
+        .demand.high { color: #10b981; }
+        .demand.medium { color: #f59e0b; }
 
         .skills {
           display: flex;
@@ -556,26 +669,89 @@ const Margadarshak = () => {
           margin-top: 1rem;
         }
 
+        .badge {
+          background: #eef2ff;
+          color: #4f46e5;
+          padding: 0.25rem 0.5rem;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          font-weight: 600;
+        }
+
+        .badge-primary {
+          background: #667eea20;
+          color: #667eea;
+        }
+
+        .roadmap-container {
+          padding: 2rem 0;
+        }
+
         .roadmap-header {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
           margin-bottom: 2rem;
+          flex-wrap: wrap;
+          gap: 1rem;
         }
 
         .roadmap-duration {
           color: #6b7280;
           margin-bottom: 0;
+          margin-top: 0.25rem;
+        }
+
+        .import-unnati-btn {
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          color: white;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .roadmap-timeline {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .timeline-item {
+          background: white;
+          padding: 1.5rem;
+          border-radius: 12px;
+          border: 1px solid #e2e8f0;
+          border-left: 4px solid #667eea;
+        }
+
+        .timeline-item h3 {
+          font-size: 1.25rem;
+          color: #1e293b;
+          margin-bottom: 0.25rem;
+        }
+
+        .timeline-item .duration {
+          color: #64748b;
+          font-size: 0.875rem;
+          font-weight: 600;
         }
 
         .roadmap-section {
-          margin: 1.5rem 0;
+          margin: 1.25rem 0;
         }
 
         .roadmap-section h4 {
-          font-size: 1rem;
-          margin-bottom: 0.75rem;
+          font-size: 0.95rem;
+          margin-bottom: 0.5rem;
           color: #667eea;
+          font-weight: 600;
+        }
+
+        .skills-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
         }
 
         .roadmap-section ul {
@@ -584,9 +760,11 @@ const Margadarshak = () => {
         }
 
         .roadmap-section li {
-          padding: 0.5rem 0;
-          padding-left: 1.5rem;
+          padding: 0.35rem 0;
+          padding-left: 1.25rem;
           position: relative;
+          color: #334155;
+          font-size: 0.9rem;
         }
 
         .roadmap-section li::before {
@@ -594,6 +772,7 @@ const Margadarshak = () => {
           position: absolute;
           left: 0;
           color: #667eea;
+          font-weight: bold;
         }
 
         .spin {

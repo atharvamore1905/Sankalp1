@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { Menu, X, LogOut, User, Shield } from "lucide-react";
+import { Menu, X, LogOut, User, Shield, Sparkles } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
 
@@ -54,6 +54,23 @@ const Navbar = () => {
         <div className="nav-auth">
           {user ? (
             <>
+              {user.is_guest && (
+                <div className="demo-indicator-pill" data-testid="navbar-demo-pill" title="Demo Mode Active — session is isolated">
+                  <Sparkles size={14} className="sparkle-anim" />
+                  <span>Demo Mode</span>
+                </div>
+              )}
+              {user.is_guest && (
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/signup')}
+                  data-testid="btn-demo-save-progress"
+                  className="save-progress-nav-btn"
+                  title="Create an account to save your progress permanently"
+                >
+                  Save Progress
+                </Button>
+              )}
               <Button 
                 variant="ghost" 
                 onClick={() => navigate('/dashboard')}
@@ -67,6 +84,7 @@ const Navbar = () => {
                 variant="ghost" 
                 onClick={handleLogout}
                 data-testid="btn-logout"
+                title="Log out"
               >
                 <LogOut size={18} />
               </Button>
@@ -141,7 +159,39 @@ const Navbar = () => {
         .nav-auth {
           display: flex;
           align-items: center;
-          gap: 1rem;
+          gap: 0.75rem;
+        }
+
+        .demo-indicator-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.375rem;
+          background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+          color: #92400e;
+          font-size: 0.78rem;
+          font-weight: 700;
+          padding: 0.35rem 0.75rem;
+          border-radius: 9999px;
+          border: 1px solid #f59e0b40;
+          box-shadow: 0 1px 3px rgba(245, 158, 11, 0.15);
+          letter-spacing: 0.02em;
+        }
+
+        .save-progress-nav-btn {
+          font-size: 0.8rem;
+          padding: 0.35rem 0.85rem;
+          height: auto;
+          border: 1px solid #667eea;
+          color: #4f46e5;
+          font-weight: 600;
+          border-radius: 8px;
+          background: #eef2ff;
+          transition: all 0.2s ease;
+        }
+
+        .save-progress-nav-btn:hover {
+          background: #e0e7ff;
+          color: #3730a3;
         }
 
         .user-btn {

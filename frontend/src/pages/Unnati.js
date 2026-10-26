@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { TrendingUp, Plus, Calendar, Target, CheckCircle2, Circle, Clock, Edit, Trash2 } from 'lucide-react';
+import { TrendingUp, Plus, Calendar, Target, CheckCircle2, Circle, Clock, Edit, Trash2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -91,14 +91,6 @@ const Unnati = () => {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'completed': return '#10b981';
-      case 'in_progress': return '#f59e0b';
-      default: return '#6b7280';
-    }
-  };
-
   if (loading) return <div className="loading">Loading progress...</div>;
 
   return (
@@ -112,6 +104,25 @@ const Unnati = () => {
       </div>
 
       <div className="container">
+        {user?.is_guest && (
+          <div className="unnati-demo-banner" data-testid="unnati-demo-banner">
+            <div className="unnati-demo-icon">
+              <Sparkles size={20} color="#b45309" />
+            </div>
+            <div className="unnati-demo-text">
+              <strong>Demo Sandbox Mode:</strong> You are exploring Unnati as demonstration candidate Aarav Sharma. You can update goal statuses, complete milestones, create custom goals, or import Margadarshak roadmaps. Changes reflect live in this session.
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/signup')}
+              className="unnati-demo-btn"
+              data-testid="btn-unnati-signup"
+            >
+              Sign Up to Save
+            </Button>
+          </div>
+        )}
+
         {/* Stats Dashboard */}
         <div className="stats-grid">
           <Card className="stat-card">
@@ -120,7 +131,7 @@ const Unnati = () => {
                 <CheckCircle2 size={28} color="#10b981" />
               </div>
               <div className="stat-info">
-                <h3 data-testid="completed-count">{progressData?.stats.completed || 0}</h3>
+                <h3 data-testid="completed-count">{progressData?.stats?.completed || 0}</h3>
                 <p>Completed</p>
               </div>
             </CardContent>
@@ -132,7 +143,7 @@ const Unnati = () => {
                 <Clock size={28} color="#f59e0b" />
               </div>
               <div className="stat-info">
-                <h3 data-testid="inprogress-count">{progressData?.stats.in_progress || 0}</h3>
+                <h3 data-testid="inprogress-count">{progressData?.stats?.in_progress || 0}</h3>
                 <p>In Progress</p>
               </div>
             </CardContent>
@@ -144,7 +155,7 @@ const Unnati = () => {
                 <Target size={28} color="#667eea" />
               </div>
               <div className="stat-info">
-                <h3 data-testid="total-count">{progressData?.stats.total || 0}</h3>
+                <h3 data-testid="total-count">{progressData?.stats?.total || 0}</h3>
                 <p>Total Goals</p>
               </div>
             </CardContent>
@@ -162,12 +173,12 @@ const Unnati = () => {
                     fill="none" 
                     stroke="#667eea" 
                     strokeWidth="8"
-                    strokeDasharray={`${(progressData?.stats.completion_rate || 0) * 2.827} 283`}
+                    strokeDasharray={`${(progressData?.stats?.completion_rate || 0) * 2.827} 283`}
                     strokeLinecap="round"
                     transform="rotate(-90 50 50)"
                   />
                   <text x="50" y="50" textAnchor="middle" dy="7" fontSize="20" fontWeight="700" fill="#1a1a2e">
-                    {progressData?.stats.completion_rate || 0}%
+                    {progressData?.stats?.completion_rate || 0}%
                   </text>
                 </svg>
               </div>
@@ -282,7 +293,7 @@ const Unnati = () => {
             </Card>
           ) : (
             <div className="progress-list">
-              {progressData?.items.map((item, idx) => (
+              {progressData?.items?.map((item, idx) => (
                 <Card key={idx} className="progress-item" data-testid={`progress-item-${idx}`}>
                   <CardContent className="progress-content">
                     <div className="progress-header">
@@ -400,6 +411,50 @@ const Unnati = () => {
           max-width: 1400px;
           margin: 0 auto;
           padding: 2rem;
+        }
+
+        .unnati-demo-banner {
+          background: #fffbeb;
+          border: 1px solid #fde68a;
+          border-radius: 12px;
+          padding: 1.25rem 1.5rem;
+          margin-bottom: 2rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          flex-wrap: wrap;
+        }
+
+        .unnati-demo-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          background: #fef3c7;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .unnati-demo-text {
+          flex: 1;
+          min-width: 260px;
+          color: #78350f;
+          font-size: 0.92rem;
+          line-height: 1.5;
+        }
+
+        .unnati-demo-btn {
+          border-color: #f59e0b;
+          color: #b45309;
+          font-weight: 600;
+          background: white;
+          transition: all 0.2s ease;
+        }
+
+        .unnati-demo-btn:hover {
+          background: #fef3c7;
+          color: #78350f;
         }
 
         .stats-grid {
